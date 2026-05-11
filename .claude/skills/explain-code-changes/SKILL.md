@@ -1,5 +1,5 @@
 ---
-name: explain
+name: explain-code-changes
 description: Explain code changes to the user in plain language with analogies and ASCII diagrams. Use when the user asks what changed, what a PR does, what uncommitted changes do, or when you're about to explain a technical concept, architectural decision, or piece of code you wrote or modified.
 ---
 
