@@ -33,4 +33,4 @@ Example before/after:
 3. **How it works** — the mechanism, using a diagram or analogy
 4. **Anything to watch out for** — edge cases, things that could go wrong, or follow-up work (only if relevant)
 
-Keep it conversational. Avoid defining every term; if a concept needs a definition, use an analogy instead of a dictionary entry.
+Keep it conversational. Avoid defining every term; if a concept needs a definition use an analogy as well as the straight dictionary entry.
