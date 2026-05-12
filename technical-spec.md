@@ -100,13 +100,14 @@ vendex/
 │   └── offer/
 ├── gateway/
 ├── frontend/
-├── .skills/                     # Claude Code custom command skills
-│   ├── pr/
-│   ├── issue/
-│   ├── review/
-│   ├── explain/
-│   ├── test/
-│   └── scaffold/
+├── .claude/
+│   └── skills/                  # Claude Code custom command skills
+│       ├── pr/
+│       ├── issue/
+│       ├── review/
+│       ├── explain-code-changes/
+│       ├── test/
+│       └── scaffold/
 ├── scripts/                     # Developer utility scripts
 ├── docker-compose.yml
 ├── Makefile
