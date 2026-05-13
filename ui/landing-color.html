@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VenDex — Color</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #272536;
+      --bg-panel:   #2e2c3e;
+      --bg-card:    #333145;
+      --red-deep:   #a82028;
+      --red-warm:   #c85048;
+      --steel:      #a8b8c8;
+      --navy:       #304160;
+      --navy-light: #3d5478;
+      --fg:         #eaeef2;
+      --fg-mid:     #8895a5;
+      --fg-dim:     #4a4860;
+      --border:     #3a3850;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── NAV / TITLEBAR ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 44px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+
+    .nav-dots {
+      display: flex;
+      gap: 6px;
+      margin-right: 20px;
+    }
+    .nav-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .nav-dot--red  { background: var(--red-deep); }
+    .nav-dot--warm { background: var(--red-warm); }
+    .nav-dot--steel { background: var(--steel); opacity: 0.5; }
+
+    .nav-path {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--fg-mid);
+      flex: 1;
+      text-align: center;
+    }
+    .nav-path span { color: var(--fg); }
+
+    .nav-right {
+      display: flex;
+      gap: 24px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--fg-mid);
+    }
+    .nav-right a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-right a:hover { color: var(--fg); }
+
+    /* ─── HERO ─── */
+    .hero {
+      padding-top: 44px;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* LEFT: ASCII panel */
+    .hero-left {
+      border-right: 1px solid var(--border);
+      padding: 56px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel-label {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      color: var(--fg-dim);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .term-window {
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .term-titlebar {
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .term-titlebar-dots {
+      display: flex;
+      gap: 5px;
+    }
+    .term-titlebar-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .td-1 { background: var(--red-deep); }
+    .td-2 { background: var(--red-warm); }
+    .td-3 { background: var(--steel); opacity: 0.4; }
+
+    .term-titlebar-text {
+      flex: 1;
+      text-align: center;
+      color: var(--fg-dim);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+    }
+
+    .term-body {
+      padding: 20px 22px;
+    }
+
+    .ascii-art {
+      font-size: 9px;
+      line-height: 1.15;
+      letter-spacing: 0.04em;
+      color: var(--steel);
+      white-space: pre;
+      display: block;
+    }
+
+    .term-prompt-line {
+      margin-top: 16px;
+      font-size: 11px;
+      color: var(--fg-mid);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .term-prompt-line .prompt-user { color: var(--red-warm); }
+
+    .cursor {
+      display: inline-block;
+      width: 7px;
+      height: 13px;
+      background: var(--red-warm);
+      animation: blink 1.1s step-end infinite;
+      vertical-align: middle;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0; }
+    }
+
+    /* RIGHT: content panel */
+    .hero-right {
+      padding: 56px 56px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .eyebrow {
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--red-warm);
+      margin-bottom: 24px;
+    }
+
+    .headline {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(30px, 3.2vw, 50px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.06;
+      margin-bottom: 24px;
+    }
+
+    .sub {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--steel);
+      line-height: 1.72;
+      max-width: 400px;
+      margin-bottom: 40px;
+    }
+
+    .output-lines {
+      margin-bottom: 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 20px 24px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-panel);
+    }
+
+    .output-line {
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      display: flex;
+      gap: 10px;
+    }
+    .output-key { color: var(--fg-mid); min-width: 100px; }
+    .output-val { color: var(--fg); }
+    .output-sep { color: var(--fg-dim); }
+    .output-highlight { color: var(--red-warm); font-weight: 700; }
+
+    .cta-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .btn-primary {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: var(--red-deep);
+      color: var(--fg);
+      padding: 13px 30px;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--red-warm); }
+
+    .btn-ghost {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--steel);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .btn-ghost:hover { color: var(--fg); }
+
+    /* ─── PRODUCT PREVIEW SECTION ─── */
+    .preview-section {
+      border-top: 1px solid var(--border);
+      padding: 80px 48px;
+    }
+
+    .section-tag {
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--red-warm);
+      margin-bottom: 48px;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .preview-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-panel);
+      overflow: hidden;
+    }
+
+    .preview-card-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .preview-card-header h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .preview-card-header .tag {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .tag--red { background: rgba(168,32,40,0.2); color: var(--red-warm); }
+    .tag--steel { background: rgba(168,184,200,0.1); color: var(--steel); }
+    .tag--navy { background: rgba(48,65,96,0.4); color: var(--steel); }
+
+    .preview-card-body {
+      padding: 20px;
+    }
+
+    .card-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--bg-card);
+    }
+
+    .card-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .card-meta {
+      font-size: 10px;
+      color: var(--fg-mid);
+      margin-top: 2px;
+    }
+
+    .card-price {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: right;
+    }
+    .card-price .price-range { color: var(--fg); }
+    .card-price .seller-count {
+      font-size: 9px;
+      font-weight: 400;
+      color: var(--fg-mid);
+      margin-top: 2px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 8px;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .badge--sell { background: rgba(168,32,40,0.25); color: var(--red-warm); }
+    .badge--hot  { background: rgba(200,80,72,0.2); color: #e8978f; }
+    .badge--new  { background: rgba(48,65,96,0.4); color: var(--steel); }
+
+    /* Seller form preview */
+    .form-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-field label {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--fg-mid);
+    }
+
+    .form-field .input-mock {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      color: var(--fg);
+    }
+
+    .form-anon-note {
+      font-size: 10px;
+      color: var(--fg-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 4px;
+    }
+    .form-anon-note .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--navy-light);
+    }
+
+    /* Search preview */
+    .search-bar-mock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--bg);
+      margin-bottom: 12px;
+    }
+    .search-bar-mock .search-icon {
+      color: var(--fg-dim);
+      font-size: 12px;
+    }
+    .search-bar-mock .search-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      color: var(--fg-mid);
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+    .chip--active {
+      background: var(--red-deep);
+      color: var(--fg);
+    }
+    .chip--inactive {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--fg-mid);
+    }
+
+    /* ─── FEATURES ─── */
+    .features-section {
+      border-top: 1px solid var(--border);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .feature {
+      background: var(--bg);
+      padding: 44px 36px;
+    }
+
+    .feature-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 20px;
+    }
+
+    .feature-num {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--red-deep);
+    }
+
+    .feature-tag {
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      color: var(--fg-dim);
+    }
+
+    .feature-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      margin-bottom: 10px;
+    }
+
+    .feature-desc {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      color: var(--steel);
+      line-height: 1.75;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .how {
+      border-top: 1px solid var(--border);
+      padding: 72px 48px;
+    }
+
+    .terminal-steps {
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .terminal-step {
+      padding: 28px 32px;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    .terminal-step:last-child { border-bottom: none; }
+
+    .step-cmd {
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--fg-mid);
+    }
+    .step-cmd strong { color: var(--red-warm); }
+    .step-cmd .dim { opacity: 0.4; }
+
+    .step-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    .step-desc {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      color: var(--steel);
+      line-height: 1.72;
+    }
+
+    /* ─── CTA STRIP ─── */
+    .cta-strip {
+      border-top: 1px solid var(--border);
+      padding: 72px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 40px;
+    }
+
+    .cta-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(24px, 3vw, 40px);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      max-width: 520px;
+      line-height: 1.12;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-logo {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      font-weight: 700;
+    }
+
+    .footer-note {
+      font-size: 10px;
+      color: var(--fg-dim);
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TITLEBAR NAV -->
+  <nav>
+    <div class="nav-dots">
+      <div class="nav-dot nav-dot--red"></div>
+      <div class="nav-dot nav-dot--warm"></div>
+      <div class="nav-dot nav-dot--steel"></div>
+    </div>
+    <div class="nav-path">vendex — <span>Collect-A-Con Dallas · Jun 14-15</span></div>
+    <div class="nav-right">
+      <a href="#">post cards</a>
+      <a href="#">browse</a>
+      <a href="#">my offers</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+
+    <!-- LEFT: ASCII panel -->
+    <div class="hero-left">
+      <div class="panel-label">reshiram.vdx — read only</div>
+      <div class="term-window">
+        <div class="term-titlebar">
+          <div class="term-titlebar-dots">
+            <span class="td-1"></span>
+            <span class="td-2"></span>
+            <span class="td-3"></span>
+          </div>
+          <div class="term-titlebar-text">vendex — ascii viewer</div>
+        </div>
+        <div class="term-body">
+<pre class="ascii-art">
+                                  _____
+                                .'     '.
+                               / . . . . \
+                              |  .  /^\ . |
+                              |    |   |  |
+                               \  .\___/ /
+                            .---`-------'
+                           /              `--.
+                          /  .  .  .  .  .    \
+                         /  .  .  .  .  .  .   \
+                        /  .  .  .  .  .  .  .  \
+       ________________/  .  .  .  .  .  .  .  . \
+      /  .  .  .  .  .  .  .  .  .  .  .  .  .   |
+     /  .  .  .  .  .  .  .  .  .  .  .  .  .  . |
+    |  .  .  .  .  .  .  .  .  .  .  .  .  .  .  |
+    |  .  .  .  .  .  .  .  .  .  .  .  .  .  . /
+    |  .  .  .  .  .  .  .  .  .  .  .  .  .  /
+     \ .  .  .  .  .  .  .  .  .  .  .  .  . /
+      `-----. .  .  .  .  .  .  .  .  .  . .'
+             `-.  .  .  .  .  .  .  .  .  .'
+                `-.  .  .  .  .  .  .  .-'
+                   `-----------------'
+                          |  =  |
+                         /| === |\
+                        / |=====| \
+                       /  |=====|  \
+                      /___|=====|___\
+                           |||||
+</pre>
+          <div class="term-prompt-line">
+            <span><span class="prompt-user">vendex</span>@floor:~$</span>
+            <span class="cursor"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: content -->
+    <div class="hero-right">
+      <p class="eyebrow">Pokemon TCG · Event Marketplace</p>
+      <h1 class="headline">Find the cards you need. Sell the ones you don't.</h1>
+      <p class="sub">VenDex connects vendors and attendees at Pokemon TCG events. Post what you're selling, browse what's available, and find deals across every booth — all before doors open.</p>
+
+      <div class="output-lines">
+        <div class="output-line">
+          <span class="output-key">event</span>
+          <span class="output-sep">——</span>
+          <span class="output-val">Collect-A-Con Dallas · Jun 14-15</span>
+        </div>
+        <div class="output-line">
+          <span class="output-key">vendors</span>
+          <span class="output-sep">——</span>
+          <span class="output-val">34 registered</span>
+        </div>
+        <div class="output-line">
+          <span class="output-key">cards listed</span>
+          <span class="output-sep">——</span>
+          <span class="output-val">1,247 across 8 vendors</span>
+        </div>
+        <div class="output-line">
+          <span class="output-key">top deal</span>
+          <span class="output-sep">——</span>
+          <span class="output-val"><span class="output-highlight">Charizard ex</span> · 4 sellers · $42-$48</span>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <a href="#" class="btn-primary">Join the Waitlist</a>
+        <a href="#" class="btn-ghost">Browse the Floor →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PRODUCT PREVIEW -->
+  <section class="preview-section">
+    <p class="section-tag">What You'll See</p>
+    <div class="preview-grid">
+
+      <!-- Card 1: Opportunities -->
+      <div class="preview-card">
+        <div class="preview-card-header">
+          <h3>Opportunities</h3>
+          <span class="tag tag--red">live</span>
+        </div>
+        <div class="preview-card-body">
+          <ul class="card-list">
+            <li class="card-item">
+              <div>
+                <div class="card-name">Charizard ex <span class="badge badge--sell">sell</span></div>
+                <div class="card-meta">Obsidian Flames · NM · x3</div>
+              </div>
+              <div class="card-price">
+                <div class="price-range">$48.00 max</div>
+                <div class="seller-count">4 vendors want</div>
+              </div>
+            </li>
+            <li class="card-item">
+              <div>
+                <div class="card-name">Umbreon VMAX <span class="badge badge--hot">hot</span></div>
+                <div class="card-meta">Evolving Skies · NM · need 1</div>
+              </div>
+              <div class="card-price">
+                <div class="price-range">$185.00</div>
+                <div class="seller-count">1 seller found</div>
+              </div>
+            </li>
+            <li class="card-item">
+              <div>
+                <div class="card-name">Pikachu VMAX <span class="badge badge--new">new</span></div>
+                <div class="card-meta">Vivid Voltage · LP</div>
+              </div>
+              <div class="card-price">
+                <div class="price-range">$10-$15</div>
+                <div class="seller-count">3 sellers</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 2: Post Cards -->
+      <div class="preview-card">
+        <div class="preview-card-header">
+          <h3>Post Cards</h3>
+          <span class="tag tag--steel">seller</span>
+        </div>
+        <div class="preview-card-body">
+          <div class="form-preview">
+            <div class="form-row">
+              <div class="form-field">
+                <label>Card name</label>
+                <div class="input-mock">Charizard ex</div>
+              </div>
+              <div class="form-field">
+                <label>Set</label>
+                <div class="input-mock">Obsidian Flames</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Condition</label>
+                <div class="input-mock">Near Mint</div>
+              </div>
+              <div class="form-field">
+                <label>Price</label>
+                <div class="input-mock">$42.00</div>
+              </div>
+            </div>
+            <div class="form-anon-note">
+              <div class="dot"></div>
+              Identity hidden until you choose to reveal
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Browse -->
+      <div class="preview-card">
+        <div class="preview-card-header">
+          <h3>Browse Cards</h3>
+          <span class="tag tag--navy">search</span>
+        </div>
+        <div class="preview-card-body">
+          <div class="search-bar-mock">
+            <span class="search-icon">&#9906;</span>
+            <span class="search-text">Search cards at the expo...</span>
+          </div>
+          <div class="filter-chips">
+            <span class="chip chip--active">Near Mint</span>
+            <span class="chip chip--inactive">All sets</span>
+            <span class="chip chip--inactive">Any price</span>
+          </div>
+          <ul class="card-list">
+            <li class="card-item">
+              <div>
+                <div class="card-name">Charizard ex</div>
+                <div class="card-meta">4 sellers · $42-$48</div>
+              </div>
+              <div style="font-size:10px; color:var(--red-warm); letter-spacing:0.06em; text-transform:uppercase;">View →</div>
+            </li>
+            <li class="card-item">
+              <div>
+                <div class="card-name">Umbreon VMAX</div>
+                <div class="card-meta">1 seller · $185</div>
+              </div>
+              <div style="font-size:10px; color:var(--red-warm); letter-spacing:0.06em; text-transform:uppercase;">View →</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <div class="features-section">
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-head">
+          <span class="feature-num">01</span>
+          <span class="feature-tag">scope</span>
+        </div>
+        <h3 class="feature-title">Event-Scoped</h3>
+        <p class="feature-desc">Every listing and search is pinned to a specific convention. No noise from cards that aren't in the building.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-head">
+          <span class="feature-num">02</span>
+          <span class="feature-tag">privacy</span>
+        </div>
+        <h3 class="feature-title">Anonymous Until You're Ready</h3>
+        <p class="feature-desc">Post cards anonymously. Your booth and identity stay hidden until you choose to reveal them to a buyer.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-head">
+          <span class="feature-num">03</span>
+          <span class="feature-tag">intelligence</span>
+        </div>
+        <h3 class="feature-title">Opportunity Detection</h3>
+        <p class="feature-desc">VenDex surfaces the highest-value deals — cards where supply meets demand across vendors at the event.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="how">
+    <p class="section-tag">How It Works</p>
+    <div class="terminal-steps">
+      <div class="terminal-step">
+        <div class="step-cmd">
+          <strong>$ vdx post</strong><br>
+          <span class="dim">--cards ./my-binder.csv</span>
+        </div>
+        <div>
+          <h3 class="step-title">Post What You're Selling</h3>
+          <p class="step-desc">List your cards with price expectations, condition, and payment preference. Bulk import or add one at a time.</p>
+        </div>
+      </div>
+      <div class="terminal-step">
+        <div class="step-cmd">
+          <strong>$ vdx browse</strong><br>
+          <span class="dim">--event collect-a-con-dallas</span>
+        </div>
+        <div>
+          <h3 class="step-title">Browse the Floor</h3>
+          <p class="step-desc">Search across every vendor and attendee listing at the event. Filter by set, condition, and price range.</p>
+        </div>
+      </div>
+      <div class="terminal-step">
+        <div class="step-cmd">
+          <strong>$ vdx deals</strong><br>
+          <span class="dim">--sort best-value</span>
+        </div>
+        <div>
+          <h3 class="step-title">Find Your Deals</h3>
+          <p class="step-desc">VenDex ranks opportunities — best deals first, highest demand, liquidation priority. Walk in knowing exactly where to go.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-strip">
+    <h2 class="cta-text">Stop wandering the floor blind.</h2>
+    <a href="#" class="btn-primary" style="white-space:nowrap; flex-shrink:0;">Join the Waitlist</a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">VENDEX</div>
+    <div class="footer-note">© 2026 · Built for the floor</div>
+  </footer>
+
+</body>
+</html>
