@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VenDex — Inventory Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #272536;
+      --bg-panel:   #2e2c3e;
+      --bg-card:    #333145;
+      --red-deep:   #a82028;
+      --red-warm:   #c85048;
+      --steel:      #a8b8c8;
+      --navy:       #304160;
+      --navy-light: #3d5478;
+      --fg:         #eaeef2;
+      --fg-mid:     #8895a5;
+      --fg-dim:     #4a4860;
+      --border:     #3a3850;
+      --green:      #48a868;
+      --yellow:     #d4a830;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 44px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+    .nav-dots { display: flex; gap: 6px; margin-right: 20px; }
+    .nav-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .nav-dot--red  { background: var(--red-deep); }
+    .nav-dot--warm { background: var(--red-warm); }
+    .nav-dot--steel { background: var(--steel); opacity: 0.5; }
+    .nav-brand { font-size: 11px; letter-spacing: 0.2em; font-weight: 700; margin-right: 32px; }
+    .nav-links { display: flex; gap: 24px; font-size: 10px; letter-spacing: 0.12em; flex: 1; }
+    .nav-links a { color: var(--fg-mid); text-decoration: none; text-transform: uppercase; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--fg); }
+    .nav-links a.active { color: var(--fg); }
+    .nav-user { font-size: 10px; color: var(--fg-mid); letter-spacing: 0.08em; }
+
+    .content {
+      padding: 76px 48px 48px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+    .page-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 10px 20px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn--primary { background: var(--red-deep); color: var(--fg); }
+    .btn--primary:hover { background: var(--red-warm); }
+    .btn--secondary { background: var(--bg-card); border: 1px solid var(--border); color: var(--fg-mid); }
+    .btn--secondary:hover { border-color: var(--fg-mid); color: var(--fg); }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .tab {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 12px 20px;
+      color: var(--fg-mid);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab:hover { color: var(--fg); }
+    .tab.active {
+      color: var(--fg);
+      border-bottom-color: var(--red-deep);
+    }
+    .tab .count {
+      font-size: 9px;
+      color: var(--fg-dim);
+      margin-left: 6px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .search-input {
+      flex: 1;
+      max-width: 320px;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-panel);
+      color: var(--fg);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input::placeholder { color: var(--fg-dim); }
+    .search-input:focus { border-color: var(--fg-mid); }
+
+    .filter-chip {
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      padding: 6px 12px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-chip--active { background: var(--red-deep); color: var(--fg); }
+    .filter-chip--inactive { background: var(--bg-card); border: 1px solid var(--border); color: var(--fg-mid); }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead {
+      background: var(--bg-card);
+    }
+    th {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--fg-mid);
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 400;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: var(--bg-panel); }
+
+    .td-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 500;
+      font-size: 13px;
+    }
+    .td-set {
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--fg-mid);
+      font-size: 12px;
+    }
+    .td-condition {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .td-price {
+      font-weight: 700;
+    }
+    .td-qty {
+      color: var(--fg-mid);
+    }
+
+    .priority-badge {
+      font-size: 8px;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .priority--liquidate { background: rgba(212,168,48,0.2); color: var(--yellow); }
+    .priority--normal { background: rgba(168,184,200,0.1); color: var(--fg-dim); }
+
+    .demand-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--fg-mid);
+    }
+    .demand-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+    .demand--high { background: var(--green); }
+    .demand--medium { background: var(--yellow); }
+    .demand--none { background: var(--fg-dim); }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .row-action {
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+      cursor: pointer;
+      transition: color 0.15s;
+      background: none;
+      border: none;
+      font-family: 'Space Mono', monospace;
+    }
+    .row-action:hover { color: var(--fg); }
+    .row-action--danger:hover { color: var(--red-warm); }
+
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 48px;
+      text-align: center;
+      margin-top: 24px;
+      display: none;
+    }
+    .upload-zone .upload-label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      color: var(--fg-mid);
+      margin-bottom: 8px;
+    }
+    .upload-zone .upload-hint {
+      font-size: 11px;
+      color: var(--fg-dim);
+    }
+
+    .table-footer {
+      padding: 12px 16px;
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--fg-mid);
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-dots">
+      <div class="nav-dot nav-dot--red"></div>
+      <div class="nav-dot nav-dot--warm"></div>
+      <div class="nav-dot nav-dot--steel"></div>
+    </div>
+    <div class="nav-brand">VENDEX</div>
+    <div class="nav-links">
+      <a href="vendor-dashboard.html">dashboard</a>
+      <a href="#" class="active">inventory</a>
+      <a href="event-browse.html">events</a>
+      <a href="#">offers</a>
+    </div>
+    <div class="nav-user">CardShop_Dallas</div>
+  </nav>
+
+  <div class="content">
+
+    <div class="page-header">
+      <h1 class="page-title">Inventory</h1>
+      <div class="header-actions">
+        <button class="btn btn--secondary">Import CSV</button>
+        <button class="btn btn--primary">+ Add Card</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active">Selling <span class="count">87</span></div>
+      <div class="tab">Buy List <span class="count">34</span></div>
+    </div>
+
+    <div class="toolbar">
+      <input class="search-input" placeholder="Search your inventory..." type="text">
+      <span class="filter-chip filter-chip--active">All</span>
+      <span class="filter-chip filter-chip--inactive">NM</span>
+      <span class="filter-chip filter-chip--inactive">LP</span>
+      <span class="filter-chip filter-chip--inactive">Liquidate</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Card</th>
+            <th>Set</th>
+            <th>Condition</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Priority</th>
+            <th>Demand</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-name">Charizard ex</td>
+            <td class="td-set">Obsidian Flames</td>
+            <td class="td-condition">NM</td>
+            <td class="td-price">$45.00</td>
+            <td class="td-qty">2</td>
+            <td><span class="priority-badge priority--normal">normal</span></td>
+            <td>
+              <div class="demand-indicator">
+                <div class="demand-dot demand--high"></div>
+                3 want
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="row-action">Edit</button>
+                <button class="row-action row-action--danger">Remove</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-name">Giratina VSTAR</td>
+            <td class="td-set">Lost Origin</td>
+            <td class="td-condition">LP</td>
+            <td class="td-price">$20.00</td>
+            <td class="td-qty">1</td>
+            <td><span class="priority-badge priority--liquidate">liquidate</span></td>
+            <td>
+              <div class="demand-indicator">
+                <div class="demand-dot demand--medium"></div>
+                2 want
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="row-action">Edit</button>
+                <button class="row-action row-action--danger">Remove</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-name">Pikachu VMAX</td>
+            <td class="td-set">Vivid Voltage</td>
+            <td class="td-condition">LP</td>
+            <td class="td-price">$12.00</td>
+            <td class="td-qty">3</td>
+            <td><span class="priority-badge priority--normal">normal</span></td>
+            <td>
+              <div class="demand-indicator">
+                <div class="demand-dot demand--none"></div>
+                —
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="row-action">Edit</button>
+                <button class="row-action row-action--danger">Remove</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-name">Lugia VSTAR</td>
+            <td class="td-set">Silver Tempest</td>
+            <td class="td-condition">NM</td>
+            <td class="td-price">$28.00</td>
+            <td class="td-qty">1</td>
+            <td><span class="priority-badge priority--normal">normal</span></td>
+            <td>
+              <div class="demand-indicator">
+                <div class="demand-dot demand--high"></div>
+                1 wants
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="row-action">Edit</button>
+                <button class="row-action row-action--danger">Remove</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-name">Arceus VSTAR</td>
+            <td class="td-set">Brilliant Stars</td>
+            <td class="td-condition">NM</td>
+            <td class="td-price">$15.00</td>
+            <td class="td-qty">4</td>
+            <td><span class="priority-badge priority--liquidate">liquidate</span></td>
+            <td>
+              <div class="demand-indicator">
+                <div class="demand-dot demand--medium"></div>
+                1 wants
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="row-action">Edit</button>
+                <button class="row-action row-action--danger">Remove</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="td-name">Palkia VSTAR</td>
+            <td class="td-set">Astral Radiance</td>
+            <td class="td-condition">NM</td>
+            <td class="td-price">$8.00</td>
+            <td class="td-qty">2</td>
+            <td><span class="priority-badge priority--normal">normal</span></td>
+            <td>
+              <div class="demand-indicator">
+                <div class="demand-dot demand--none"></div>
+                —
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="row-action">Edit</button>
+                <button class="row-action row-action--danger">Remove</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="table-footer">
+        <span>Showing 6 of 87 cards</span>
+        <span>Total value: $1,247.00</span>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

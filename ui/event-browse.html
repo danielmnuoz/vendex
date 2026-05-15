@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VenDex — Browse Events</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:         #272536;
+      --bg-panel:   #2e2c3e;
+      --bg-card:    #333145;
+      --red-deep:   #a82028;
+      --red-warm:   #c85048;
+      --steel:      #a8b8c8;
+      --navy:       #304160;
+      --navy-light: #3d5478;
+      --fg:         #eaeef2;
+      --fg-mid:     #8895a5;
+      --fg-dim:     #4a4860;
+      --border:     #3a3850;
+      --green:      #48a868;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 44px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+    .nav-dots { display: flex; gap: 6px; margin-right: 20px; }
+    .nav-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .nav-dot--red  { background: var(--red-deep); }
+    .nav-dot--warm { background: var(--red-warm); }
+    .nav-dot--steel { background: var(--steel); opacity: 0.5; }
+    .nav-brand { font-size: 11px; letter-spacing: 0.2em; font-weight: 700; margin-right: 32px; }
+    .nav-links { display: flex; gap: 24px; font-size: 10px; letter-spacing: 0.12em; flex: 1; }
+    .nav-links a { color: var(--fg-mid); text-decoration: none; text-transform: uppercase; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--fg); }
+    .nav-links a.active { color: var(--fg); }
+    .nav-user { font-size: 10px; color: var(--fg-mid); letter-spacing: 0.08em; }
+
+    .content {
+      padding: 76px 48px 48px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+    .page-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .search-input {
+      flex: 1;
+      padding: 11px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-panel);
+      color: var(--fg);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input::placeholder { color: var(--fg-dim); }
+    .search-input:focus { border-color: var(--fg-mid); }
+
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .filter-chip {
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      padding: 6px 14px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-chip--active { background: var(--red-deep); color: var(--fg); }
+    .filter-chip--inactive { background: var(--bg-card); border: 1px solid var(--border); color: var(--fg-mid); }
+
+    .section-label {
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--red-warm);
+      margin-bottom: 20px;
+    }
+
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 48px;
+    }
+
+    .event-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-panel);
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .event-card:hover { border-color: var(--fg-mid); }
+    .event-card--registered { border-left: 3px solid var(--green); }
+
+    .event-card-top {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .event-card-date {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--red-warm);
+      margin-bottom: 10px;
+    }
+    .event-card-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+    .event-card-location {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      color: var(--fg-mid);
+    }
+
+    .event-card-stats {
+      padding: 16px 24px;
+      display: flex;
+      gap: 24px;
+    }
+    .event-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .event-stat-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .event-stat-label {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--fg-mid);
+    }
+
+    .event-card-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .event-status {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .event-status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+    .event-status--live .event-status-dot { background: var(--green); }
+    .event-status--live { color: var(--green); }
+    .event-status--upcoming .event-status-dot { background: var(--navy-light); }
+    .event-status--upcoming { color: var(--fg-mid); }
+    .event-status--registered .event-status-dot { background: var(--green); }
+    .event-status--registered { color: var(--green); }
+
+    .btn-sm {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-sm--primary { background: var(--red-deep); color: var(--fg); }
+    .btn-sm--primary:hover { background: var(--red-warm); }
+    .btn-sm--ghost { background: none; border: 1px solid var(--border); color: var(--fg-mid); }
+    .btn-sm--ghost:hover { border-color: var(--fg-mid); color: var(--fg); }
+    .btn-sm--registered { background: var(--bg-card); color: var(--green); border: 1px solid var(--border); cursor: default; }
+
+    .map-placeholder {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-panel);
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 48px;
+    }
+    .map-placeholder-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      color: var(--fg-dim);
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-dots">
+      <div class="nav-dot nav-dot--red"></div>
+      <div class="nav-dot nav-dot--warm"></div>
+      <div class="nav-dot nav-dot--steel"></div>
+    </div>
+    <div class="nav-brand">VENDEX</div>
+    <div class="nav-links">
+      <a href="vendor-dashboard.html">dashboard</a>
+      <a href="inventory-manager.html">inventory</a>
+      <a href="#" class="active">events</a>
+      <a href="#">offers</a>
+    </div>
+    <div class="nav-user">CardShop_Dallas</div>
+  </nav>
+
+  <div class="content">
+
+    <div class="page-header">
+      <h1 class="page-title">Events</h1>
+    </div>
+
+    <div class="search-row">
+      <input class="search-input" placeholder="Search events by name or location..." type="text">
+      <div class="filter-chips">
+        <span class="filter-chip filter-chip--active">All</span>
+        <span class="filter-chip filter-chip--inactive">This Month</span>
+        <span class="filter-chip filter-chip--inactive">Texas</span>
+      </div>
+    </div>
+
+    <div class="map-placeholder">
+      <div class="map-placeholder-text">Map view — upcoming events in your region</div>
+    </div>
+
+    <div class="section-label">My Events</div>
+
+    <div class="events-grid">
+      <div class="event-card event-card--registered">
+        <div class="event-card-top">
+          <div class="event-card-date">Jun 14-15, 2026</div>
+          <div class="event-card-name">Collect-A-Con Dallas</div>
+          <div class="event-card-location">Dallas Convention Center · Dallas, TX</div>
+        </div>
+        <div class="event-card-stats">
+          <div class="event-stat">
+            <span class="event-stat-value">34</span>
+            <span class="event-stat-label">Vendors</span>
+          </div>
+          <div class="event-stat">
+            <span class="event-stat-value">1,247</span>
+            <span class="event-stat-label">Cards Listed</span>
+          </div>
+          <div class="event-stat">
+            <span class="event-stat-value">12</span>
+            <span class="event-stat-label">Your Overlaps</span>
+          </div>
+        </div>
+        <div class="event-card-footer">
+          <div class="event-status event-status--registered">
+            <div class="event-status-dot"></div>
+            Registered
+          </div>
+          <button class="btn-sm btn-sm--registered">Registered</button>
+        </div>
+      </div>
+
+      <div class="event-card event-card--registered">
+        <div class="event-card-top">
+          <div class="event-card-date">Jul 05-06, 2026</div>
+          <div class="event-card-name">Houston Card Show</div>
+          <div class="event-card-location">NRG Center · Houston, TX</div>
+        </div>
+        <div class="event-card-stats">
+          <div class="event-stat">
+            <span class="event-stat-value">18</span>
+            <span class="event-stat-label">Vendors</span>
+          </div>
+          <div class="event-stat">
+            <span class="event-stat-value">—</span>
+            <span class="event-stat-label">Cards Listed</span>
+          </div>
+          <div class="event-stat">
+            <span class="event-stat-value">5</span>
+            <span class="event-stat-label">Your Overlaps</span>
+          </div>
+        </div>
+        <div class="event-card-footer">
+          <div class="event-status event-status--upcoming">
+            <div class="event-status-dot"></div>
+            21 days away
+          </div>
+          <button class="btn-sm btn-sm--registered">Registered</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Upcoming Near You</div>
+
+    <div class="events-grid">
+      <div class="event-card">
+        <div class="event-card-top">
+          <div class="event-card-date">Jul 19-20, 2026</div>
+          <div class="event-card-name">Austin TCG Expo</div>
+          <div class="event-card-location">Palmer Events Center · Austin, TX</div>
+        </div>
+        <div class="event-card-stats">
+          <div class="event-stat">
+            <span class="event-stat-value">22</span>
+            <span class="event-stat-label">Vendors</span>
+          </div>
+          <div class="event-stat">
+            <span class="event-stat-value">430</span>
+            <span class="event-stat-label">Cards Listed</span>
+          </div>
+        </div>
+        <div class="event-card-footer">
+          <div class="event-status event-status--upcoming">
+            <div class="event-status-dot"></div>
+            35 days away
+          </div>
+          <button class="btn-sm btn-sm--primary">Register</button>
+        </div>
+      </div>
+
+      <div class="event-card">
+        <div class="event-card-top">
+          <div class="event-card-date">Aug 02-03, 2026</div>
+          <div class="event-card-name">San Antonio Pokemon Fest</div>
+          <div class="event-card-location">Henry B. Gonzalez Center · San Antonio, TX</div>
+        </div>
+        <div class="event-card-stats">
+          <div class="event-stat">
+            <span class="event-stat-value">15</span>
+            <span class="event-stat-label">Vendors</span>
+          </div>
+          <div class="event-stat">
+            <span class="event-stat-value">—</span>
+            <span class="event-stat-label">Cards Listed</span>
+          </div>
+        </div>
+        <div class="event-card-footer">
+          <div class="event-status event-status--upcoming">
+            <div class="event-status-dot"></div>
+            49 days away
+          </div>
+          <button class="btn-sm btn-sm--primary">Register</button>
+        </div>
+      </div>
+
+      <div class="event-card">
+        <div class="event-card-top">
+          <div class="event-card-date">Aug 16, 2026</div>
+          <div class="event-card-name">DFW Card & Collectibles</div>
+          <div class="event-card-location">Arlington Convention Center · Arlington, TX</div>
+        </div>
+        <div class="event-card-stats">
+          <div class="event-stat">
+            <span class="event-stat-value">8</span>
+            <span class="event-stat-label">Vendors</span>
+          </div>
+          <div class="event-stat">
+            <span class="event-stat-value">—</span>
+            <span class="event-stat-label">Cards Listed</span>
+          </div>
+        </div>
+        <div class="event-card-footer">
+          <div class="event-status event-status--upcoming">
+            <div class="event-status-dot"></div>
+            63 days away
+          </div>
+          <button class="btn-sm btn-sm--primary">Register</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

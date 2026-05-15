@@ -101,53 +101,6 @@
       overflow: hidden;
     }
 
-    .panel-label {
-      font-size: 9px;
-      letter-spacing: 0.25em;
-      color: var(--fg-dim);
-      text-transform: uppercase;
-      margin-bottom: 20px;
-    }
-
-    .term-window {
-      border: 1px solid var(--border);
-      background: var(--bg-panel);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-
-    .term-titlebar {
-      border-bottom: 1px solid var(--border);
-      padding: 8px 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .term-titlebar-dots {
-      display: flex;
-      gap: 5px;
-    }
-    .term-titlebar-dots span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-    .td-1 { background: var(--red-deep); }
-    .td-2 { background: var(--red-warm); }
-    .td-3 { background: var(--blue); }
-
-    .term-titlebar-text {
-      flex: 1;
-      text-align: center;
-      color: var(--fg-dim);
-      font-size: 10px;
-      letter-spacing: 0.08em;
-    }
-
-    .term-body {
-      padding: 20px 22px;
-    }
-
     .ascii-art {
       font-size: 9px;
       line-height: 1.15;
@@ -155,29 +108,6 @@
       color: var(--navy);
       white-space: pre;
       display: block;
-    }
-
-    .term-prompt-line {
-      margin-top: 16px;
-      font-size: 11px;
-      color: var(--fg-mid);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .term-prompt-line .prompt-user { color: var(--red-warm); }
-
-    .cursor {
-      display: inline-block;
-      width: 7px;
-      height: 13px;
-      background: var(--blue);
-      animation: blink 1.1s step-end infinite;
-      vertical-align: middle;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50%      { opacity: 0; }
     }
 
     /* RIGHT: content panel */
@@ -540,19 +470,19 @@
       padding: 28px 32px;
       border-bottom: 1px solid var(--border);
       display: grid;
-      grid-template-columns: 200px 1fr;
-      gap: 40px;
+      grid-template-columns: 56px 1fr;
+      gap: 24px;
       align-items: start;
     }
     .terminal-step:last-child { border-bottom: none; }
 
-    .step-cmd {
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      color: var(--fg-mid);
+    .step-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--red-deep);
+      line-height: 1;
     }
-    .step-cmd strong { color: var(--red-warm); }
-    .step-cmd .dim { opacity: 0.4; }
 
     .step-title {
       font-family: 'Space Grotesk', sans-serif;
@@ -632,17 +562,6 @@
 
     <!-- LEFT: ASCII panel -->
     <div class="hero-left">
-      <div class="panel-label">reshiram.vdx — read only</div>
-      <div class="term-window">
-        <div class="term-titlebar">
-          <div class="term-titlebar-dots">
-            <span class="td-1"></span>
-            <span class="td-2"></span>
-            <span class="td-3"></span>
-          </div>
-          <div class="term-titlebar-text">vendex — ascii viewer</div>
-        </div>
-        <div class="term-body">
 <pre class="ascii-art">
                                   _____
                                 .'     '.
@@ -673,12 +592,6 @@
                       /___|=====|___\
                            |||||
 </pre>
-          <div class="term-prompt-line">
-            <span><span class="prompt-user">vendex</span>@floor:~$</span>
-            <span class="cursor"></span>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- RIGHT: content -->
@@ -874,30 +787,21 @@
     <p class="section-tag">How It Works</p>
     <div class="terminal-steps">
       <div class="terminal-step">
-        <div class="step-cmd">
-          <strong>$ vdx post</strong><br>
-          <span class="dim">--cards ./my-binder.csv</span>
-        </div>
+        <div class="step-num">01</div>
         <div>
           <h3 class="step-title">Post What You're Selling</h3>
-          <p class="step-desc">List your cards with price expectations, condition, and payment preference. Bulk import or add one at a time.</p>
+          <p class="step-desc">List your cards with price, condition, and payment preference. Add them one at a time or bulk import from a spreadsheet.</p>
         </div>
       </div>
       <div class="terminal-step">
-        <div class="step-cmd">
-          <strong>$ vdx browse</strong><br>
-          <span class="dim">--event collect-a-con-dallas</span>
-        </div>
+        <div class="step-num">02</div>
         <div>
           <h3 class="step-title">Browse the Floor</h3>
-          <p class="step-desc">Search across every vendor and attendee listing at the event. Filter by set, condition, and price range.</p>
+          <p class="step-desc">Search across every vendor and attendee listing at the event. Filter by card name, set, condition, and price range.</p>
         </div>
       </div>
       <div class="terminal-step">
-        <div class="step-cmd">
-          <strong>$ vdx deals</strong><br>
-          <span class="dim">--sort best-value</span>
-        </div>
+        <div class="step-num">03</div>
         <div>
           <h3 class="step-title">Find Your Deals</h3>
           <p class="step-desc">VenDex ranks opportunities — best deals first, highest demand, liquidation priority. Walk in knowing exactly where to go.</p>
