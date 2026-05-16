@@ -108,13 +108,15 @@ These are constraints the product holds itself to. Features that violate them ge
 
 VenDex coordinates *who should meet whom*, but the actual exchange — pricing negotiation, condition inspection, payment, handshake — always happens at the booth. The product deliberately has no in-app checkout, no "mark deal as done" button, no escrow, no chat-based haggling. If someone could complete a card transaction without ever speaking to the other party, the convention has been replaced by a fulfillment center, and VenDex has done damage to the hobby instead of serving it.
 
+- **Pre-event matching produces intent, never commitments.** No in-app deal confirmation, no card reservations, no locked prices, no escrow. Every match should encourage walking up to a booth. Users can avoid the booth but will most likely collaborate over other forms of contact (instagram, texting, etc) that we should allow to share with one another.
+
 ### Pre-event matching produces intent, never commitments
 
 Pre-event discovery is the strongest value VenDex creates — vendors walk into a convention with a plan instead of wandering. But matching must produce *awareness* (here's who has what), not *closed deals* (we've agreed on price and quantity). No reserved cards. No locked prices. No "pick this up at my booth" tickets. Every match still requires walking up, looking at the card, talking to the human.
 
 ### Browse demand, query supply
 
-VenDex exposes the *demand* side of the market (vendor buy lists at an event) as a fully browseable list. Anyone planning to sell at a convention should be able to see who wants what. But the *supply* side (vendor inventory at an event) is intentionally query-only — you can search for a specific card to find which vendors at this event have it, but there is no "show me all cards for sale at this event" catalog. This asymmetry is deliberate:
+VenDex exposes the *demand* side of the market (vendor buy lists at an event) as a fully browseable list. Anyone planning to sell at a convention should be able to see who wants what. But the *supply* side (vendor inventory at an event) is intentionally query-only — you can search for a specific card to find which vendors at this event have it, but there is no "show me all cards for sale at this event" catalog. A browseable inventory catalog would let attendees skip the convention floor, which is the failure mode the product exists to prevent. This asymmetry is deliberate:
 
 - **Browsing demand preserves the convention.** Sellers (vendors or attendees) need structured information to find the right booth efficiently. There is no "happy accident" version of selling a binder.
 - **Query-only supply preserves the convention.** Buying is where the magic of a card show lives — turning a corner, spotting something under glass, getting drawn into a booth. A browseable inventory surface would replace the floor walk with a feed scroll, which is exactly the failure mode the product is built to avoid.
@@ -229,7 +231,7 @@ This is where the vendor-vendor product becomes usable end-to-end. End of Phase 
 - Inventory velocity scoring (how fast certain cards move)
 - Regional demand heatmaps
 - Proximity-based opportunity surfacing at events ("vendor 2 aisles away has your card")
-- Expansion to additional TCGs (Magic, Yu-Gi-Oh, One Piece) if Pokemon adoption succeeds
+- Expansion to additional TCGs (Magic, Yu-Gi-Oh, One Piece) if Pokemon adoption succeeds. For now ONLY Pokemon. 
 
 ---
 
