@@ -1,0 +1,43 @@
+/* VenDex design tokens — single source of truth for colors and fonts.
+   The pen file (ui/vendex.pen) is the canonical visual design source;
+   any HTML/CSS code in this project should consume the variables below
+   instead of hardcoding hex values.
+
+   Light theme is the only active theme. Dark theme is reserved for Phase
+   6+ (see color-palette.md) and is shipped as a data-theme override so
+   a future theme toggle is just an attribute flip. */
+
+:root {
+  --color-bg:         #f0f0f8;
+  --color-bg-panel:   #ffffff;
+  --color-bg-card:    #f7f7fc;
+  --color-red-deep:   #a82028;
+  --color-red-warm:   #c85048;
+  --color-blue:       #70b8f0;
+  --color-navy:       #304160;
+  --color-fg:         #1e1e2a;
+  --color-fg-mid:     #5a6270;
+  --color-fg-dim:     #a8b8c8;
+  --color-border:     #d4dce6;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono:    'Space Mono', monospace;
+}
+
+/* Dark theme — Phase 6+. Not used by any UI today. Preserved here so the
+   future toggle is a data-theme="dark" attribute flip. */
+:root[data-theme="dark"] {
+  --color-bg:         #272536;
+  --color-bg-panel:   #2e2c3e;
+  --color-bg-card:    #333145;
+  --color-red-deep:   #a82028;
+  --color-red-warm:   #c85048;
+  --color-blue:       #70b8f0;
+  --color-navy:       #304160;
+  --color-navy-light: #3d5478;
+  --color-fg:         #eaeef2;
+  --color-fg-mid:     #8895a5;
+  --color-fg-dim:     #4a4860;
+  --color-border:     #3a3850;
+  --color-steel:      #a8b8c8;
+}

@@ -80,15 +80,49 @@ The core mechanism of the platform. The system continuously compares vendor inve
 
 This is not social matching. It is a supply-demand intersection — the same fundamental mechanic as a stock exchange order book, applied to trading card inventory. No swiping, no profiles, no algorithmic curation. Just: "these two vendors have complementary inventory, and they are both attending the same event."
 
+Vendors can act on overlaps in two ways. **Pre-event:** save the overlap to an event plan that re-surfaces on event day with a notification, so the vendor can act on it once the floor opens. **In-event:** reveal booth and on-floor contact info to a specific vendor for an in-person meetup. VenDex never hosts the transaction — the actual exchange happens at the booth.
+
 ### Anonymous Attendee Listings
 
 Convention attendees can post temporary, anonymous listings of cards they want to sell. These listings are only visible to verified vendors attending the same event. Vendors can express interest or submit preliminary price ranges. The attendee's identity is never revealed until they explicitly choose to engage with a specific vendor.
 
-Listings auto-expire when the event ends. Attendees cannot browse vendor inventory or interact with other attendees. The flow is one-directional: attendees post supply, vendors discover it.
+Listings auto-expire when the event ends. **Attendees cannot interact with other attendees** — VenDex never surfaces other attendees' listings to an attendee, and attendees cannot make offers on each other's cards.
+
+For browsing the event, VenDex follows a **"browse demand, query supply"** rule (see the design principle below). Attendees can freely browse vendor *buy lists* at events they're registered for, so a seller with cards in hand can see which booths want them and plan their walk. But attendees cannot browse vendor *inventory* as a catalog — they can only search for a specific card to see which vendors at the event have it. There is intentionally no "show me everything for sale here" surface, because that would let attendees skip the floor entirely. All attendee purchases still happen at the booth, not in-app.
 
 ### Events
 
 Conventions and card shows are the organizing structure of the platform. Events have dates, locations, and rosters of participating vendors. All inventory overlap detection and attendee listings are scoped to events. The platform is most active in the lead-up to and during events.
+
+### Notifications
+
+VenDex's value spikes in the days leading up to and during an event, so notifications are a first-class surface, not an afterthought. Vendors receive in-app and email notifications for: new overlaps on their buy list, new overlaps on inventory marked to liquidate, new anonymous attendee listings matching their buy list, optional price drops on watched cards, and event reminders (T-7d, T-1d, day-of). Each trigger is independently togglable and can be muted per-event. Notification cadence is configurable as real-time, daily digest, or event-only. Push notifications are deferred to a later phase.
+
+---
+
+## Design Principles
+
+These are constraints the product holds itself to. Features that violate them get cut.
+
+### The app is the meeting layer, not the interchange layer
+
+VenDex coordinates *who should meet whom*, but the actual exchange — pricing negotiation, condition inspection, payment, handshake — always happens at the booth. The product deliberately has no in-app checkout, no "mark deal as done" button, no escrow, no chat-based haggling. If someone could complete a card transaction without ever speaking to the other party, the convention has been replaced by a fulfillment center, and VenDex has done damage to the hobby instead of serving it.
+
+### Pre-event matching produces intent, never commitments
+
+Pre-event discovery is the strongest value VenDex creates — vendors walk into a convention with a plan instead of wandering. But matching must produce *awareness* (here's who has what), not *closed deals* (we've agreed on price and quantity). No reserved cards. No locked prices. No "pick this up at my booth" tickets. Every match still requires walking up, looking at the card, talking to the human.
+
+### Browse demand, query supply
+
+VenDex exposes the *demand* side of the market (vendor buy lists at an event) as a fully browseable list. Anyone planning to sell at a convention should be able to see who wants what. But the *supply* side (vendor inventory at an event) is intentionally query-only — you can search for a specific card to find which vendors at this event have it, but there is no "show me all cards for sale at this event" catalog. This asymmetry is deliberate:
+
+- **Browsing demand preserves the convention.** Sellers (vendors or attendees) need structured information to find the right booth efficiently. There is no "happy accident" version of selling a binder.
+- **Query-only supply preserves the convention.** Buying is where the magic of a card show lives — turning a corner, spotting something under glass, getting drawn into a booth. A browseable inventory surface would replace the floor walk with a feed scroll, which is exactly the failure mode the product is built to avoid.
+- **Vendor competitive intelligence stays intact.** A vendor's full inventory isn't a public catalog other vendors can scrape and undercut.
+
+### Dwell time in the app at events is a negative metric
+
+Activation should happen pre-event and during morning prep. During the event itself, the app's job is to *push the user off it* — surfacing booth-direction nudges ("Vendor C3 wants your Charizards — booth B-7, two aisles over") rather than browse surfaces. If users are spending more time in VenDex during conventions, the product is failing on the principles above.
 
 ---
 
@@ -138,53 +172,74 @@ Conventions and card shows are the organizing structure of the platform. Events 
 
 ---
 
+## Organizer UX — Deferred
+
+Organizer-facing UI (event creation form, vendor roster, aggregate analytics dashboard) is deferred to Phase 6 or later. Until then, events are created on behalf of organizers by the VenDex operator via direct database insert or an admin script. The Event Service still ships its full gRPC surface in Phase 2 — `CreateEvent`, `UpdateEvent`, `GetEvent`, `GetEventVendors`, `GetEventAttendees` — so this is strictly a UX deferral, not a service deferral. Vendors and attendees experience events as fully-populated entities from the moment they sign up.
+
+---
+
 ## Feature Set by Phase
 
-### Phase 1–3 Features (Core Platform)
+The product is built in two halves: **vendor-vendor first** (Phases 1-4), then **attendees added on top** (Phase 5). The split exists so the vendor-side product can be validated with real users before any attendee complexity is introduced. If vendor-vendor doesn't earn its keep, attendee flow doesn't ship.
+
+### Phases 1-3 Features (Vendor-Vendor Backend)
 
 - Vendor registration and authentication
 - Pokemon card catalog with search (powered by Pokemon TCG API data)
 - Inventory management (manual entry + CSV bulk upload)
 - Buy list management
-- Event creation (by organizers) and vendor registration for events
+- Event creation (by organizers, via admin script for v1) and vendor registration for events
 - Inventory overlap detection within event context
 - Notification feed: actionable opportunities surfaced to vendors
-- Vendor dashboard: upcoming events, active opportunities, inventory overview
+- Per-vendor saved overlaps (pre-event event-plan) and conversation state (all-can-bid)
 
-### Phase 4 Features (Attendee Flow)
+### Phase 4 Features (Vendor Frontend + API Gateway)
 
-- Attendee registration (lightweight, no shop profile)
-- Anonymous event listing upload
-- Vendor interest signals and preliminary offers on anonymous listings
-- Attendee offer review and acceptance
-- Identity reveal on accepted offers
-- Auto-expiration of listings when events end
+This is where the vendor-vendor product becomes usable end-to-end. End of Phase 4 = a vendor can sign up, import inventory, register for an event, see overlaps, and reveal booth info to a counterparty — all through a real web app.
 
-### Phase 5 Features (Frontend)
+- API Gateway: REST → gRPC translation for auth, card catalog, inventory, buy list, events, overlaps, notifications, vendor profile.
+- Vendor web app (mobile-first responsive):
+  - Vendor dashboard with event-scoped views (stats, opportunities, upcoming events, notifications)
+  - Inventory manager: CRUD + CSV import with fuzzy-match resolution
+  - Buy list manager
+  - Event browse + registration
+  - Overlap detail with conversation state and pre-event vs in-event CTAs
+  - Notification feed + preferences
+  - Vendor signup + profile setup
+- Soft launch with a handful of real vendors. No attendee flow yet.
 
-- Mobile-first responsive web application
-- Vendor dashboard with event-scoped views
-- Attendee listing and offer management UI
-- Organizer event creation and analytics view
+### Phase 5 Features (Attendee Backend + Frontend)
 
-### Future Features (Phase 7+)
+- Attendee role added to Auth Service. Attendee registration (lightweight, no shop profile).
+- Anonymous event listing upload (owned by Offer Service end-to-end so attendee identity stays inside one service boundary).
+- Vendor interest signals and preliminary offers on anonymous listings.
+- Attendee offer review and acceptance with identity reveal.
+- Auto-expiration of listings when events end.
+- Attendee event-scoped browse and search, following the "browse demand, query supply" rule (browse vendor buy lists, query vendor inventory by card).
+- Attendee mobile web flow: signup, event home, browse, find-a-card, list-a-card, my listings & offers, offer detail / accept.
+- API Gateway routes extended for listings + offers + attendee endpoints.
 
+### Future Features (Phase 6+: Infrastructure, Organizer UX, Intelligence)
+
+- Kubernetes deployment + observability stack
+- Organizer UX: event creation form, vendor roster, aggregate analytics
 - Demand trend tracking across events
 - Price convergence analytics (ask price vs buy price over time)
 - Event-specific aggregate analytics for organizers
 - Inventory velocity scoring (how fast certain cards move)
 - Regional demand heatmaps
 - Proximity-based opportunity surfacing at events ("vendor 2 aisles away has your card")
+- Expansion to additional TCGs (Magic, Yu-Gi-Oh, One Piece) if Pokemon adoption succeeds
 
 ---
 
 ## What VenDex Is Not
 
-- **Not a consumer marketplace.** Collectors do not browse and buy cards here. That is TCGPlayer, eBay, and Whatnot's domain.
+- **Not a consumer marketplace.** Collectors can browse what's at an event to plan their visit, but no retail transactions happen in-app. TCGPlayer, eBay, and Whatnot own the consumer transaction.
 - **Not a social platform.** No feeds, no followers, no likes, no public profiles. Interactions are transactional and structured.
 - **Not a grading service or price guide.** The platform references market data but does not set prices or grade cards.
 - **Not peer-to-peer trading.** Attendees cannot trade with other attendees. Vendors are always at the center of every transaction.
-- **Not a general trading card platform.** VenDex is Pokemon TCG only.
+- **Not a general trading card platform — at launch.** VenDex is Pokemon TCG only for the initial release. Other TCGs (Magic, Yu-Gi-Oh, One Piece, etc.) are explicitly out of scope for v1, but the platform could expand to additional TCGs in a future phase if Pokemon adoption succeeds.
 
 ---
 
