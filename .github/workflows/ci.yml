@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      # Uncomment when services exist:
+      # - name: Vet
+      #   run: go vet ./...
+
+      # - name: Test
+      #   run: go test ./...
+
+      - name: Placeholder
+        run: echo "CI skeleton — add real steps as services are built"
