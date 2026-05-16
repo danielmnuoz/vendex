@@ -73,64 +73,52 @@ Each service:
 
 ---
 
-## Phase 0 — Developer Tooling & Agentic Engineering Setup
+## Phase 0 — Design, Specs & Agentic Workflow Setup
 
-**Goal:** Before writing any application code, establish the development workflow, testing infrastructure, and agentic engineering skills that will be used throughout the project. This phase is about building the tools that make every subsequent phase faster and more educational.
+**Goal:** Establish the things that exist *independently* of application code — visual design, written specs, collaboration rules, and the Claude Code skills needed to operate on the repo. Anything that needs real Go code to be useful (linters, build tooling, docker-compose, service scaffolding) is deferred to Phase 1, where it ships alongside the first consumer. This keeps Phase 0 from accumulating placeholder scaffolds that drift before they're used.
 
-**What you learn:** Claude Code custom commands, GitHub CLI automation, CI/CD pipeline design, testing strategy, agentic workflow patterns.
+**What you learn:** Claude Code custom commands, GitHub CLI automation, design-token workflows, spec-driven development.
 
 ### Deliverables
 
-**Repository Structure**
+**Repository skeleton (Phase 0 scope only)**
 ```
 vendex/
 ├── .github/
 │   ├── workflows/
-│   │   ├── ci.yml              # Build + test on every PR
-│   │   ├── lint.yml             # Linting and formatting checks
-│   │   └── release.yml          # Build and push Docker images on merge to main
+│   │   └── ci.yml              # Placeholder skeleton — real steps added in Phase 1
 │   └── PULL_REQUEST_TEMPLATE.md
-├── proto/                       # Shared protobuf definitions
-├── services/
-│   ├── auth/
-│   ├── card-catalog/
-│   ├── inventory/
-│   ├── buylist/
-│   ├── event/
-│   ├── overlap-detection/
-│   ├── notification/
-│   └── offer/
-├── gateway/
-├── frontend/
 ├── .claude/
-│   └── skills/                  # Claude Code custom command skills
+│   └── skills/                  # Skills usable today, against specs/markdown/PRs
 │       ├── pr/
 │       ├── issue/
 │       ├── review/
 │       ├── explain-code-changes/
-│       ├── test/
-│       └── scaffold/
-├── scripts/                     # Developer utility scripts
-├── docker-compose.yml
-├── Makefile
+│       └── learn/
+├── ui/
+│   ├── vendex.pen              # Canonical mockups (encrypted; access via pencil MCP)
+│   ├── tokens.css              # Design tokens — single source of truth for Phase 4+
+│   └── color-palette.md        # Palette reference doc
+├── CLAUDE.md                   # Agent collaboration rules
+├── product-spec.md
+├── technical-spec.md
 └── README.md
 ```
 
-**CI/CD Pipeline (GitHub Actions)**
-- `ci.yml`: On every PR — run `go vet`, `golangci-lint`, unit tests, integration tests (with Dockerized Postgres/Kafka/Redis), generate coverage report.
-- `lint.yml`: Enforce `gofmt`, protobuf linting, commit message format.
-- `release.yml`: On merge to `main` — build Docker images for each service, push to GitHub Container Registry, tag with commit SHA.
+Application directories (`proto/`, `services/`, `gateway/`, `frontend/`, `scripts/`) are created in Phase 1 when they have something to hold.
 
-**Testing Strategy**
-- **Unit tests:** Every service has unit tests for business logic. No external dependencies — use interfaces and mocks.
-- **Integration tests:** Test gRPC endpoints with a real database (Dockerized Postgres spun up in CI). Test Kafka producers/consumers with an embedded or Dockerized Kafka.
-- **End-to-end tests:** After Phase 5, test full workflows through the API Gateway.
-- **Test coverage target:** 70%+ per service from Phase 1 onward. Not a vanity metric — the goal is to catch regressions as services evolve.
-- **Table-driven tests:** Follow Go convention of table-driven test cases for comprehensive input coverage.
+**CI skeleton (`ci.yml`)**
+A placeholder workflow that runs on every PR with `continue-on-error: true`. It checks out the repo and sets up Go but performs no real validation — its job is to exist so Phase 1 can flip on real steps (`go vet`, `golangci-lint`, unit + integration tests) without restructuring the workflow. `lint.yml` and `release.yml` are deferred to Phase 1.
 
-**Claude Code Custom Commands (Agentic Skills)**
+**PR Template (`.github/PULL_REQUEST_TEMPLATE.md`)**
+Sections matching the `/pr` skill's output (Summary, What changed and why, Testing, Related issues) plus a project-specific checklist: specs updated if behavior changed, UI consumes `ui/tokens.css` rather than hex literals, mockups in `ui/vendex.pen` updated via pencil MCP if visual design changed.
 
-These are custom slash commands or prompt templates for Claude Code that standardize your development workflow. Each one is a reusable skill.
+**Visual design source**
+`ui/vendex.pen` contains the canonical mockups for the vendor and attendee flows (Phases 0–5). `ui/tokens.css` is the single source of truth for color and font variables — Phase 4+ React code consumes these directly. The pen file still has hex literals embedded; a `replace_all_matching_properties` pass against the token names is owed before the Phase 4 component library is built.
+
+**Claude Code Custom Commands (Phase 0 scope)**
+
+Only the skills that can operate on what exists today (specs, markdown, PRs) ship in Phase 0. Code-aware skills (`/test`, `/scaffold`) move to Phase 1.
 
 `/pr` — **PR Creation Skill**
 - Analyzes staged changes (git diff)
@@ -157,17 +145,42 @@ These are custom slash commands or prompt templates for Claude Code that standar
 - Outputs as a markdown file in a `docs/decisions/` directory (lightweight ADR format)
 - Example: "Why we used Redis sorted sets for overlap detection instead of PostgreSQL joins"
 
-`/test` — **Test Generation Skill**
-- Reads a Go source file
-- Generates table-driven test cases covering: happy path, edge cases, error conditions
-- Creates mock implementations for interfaces
-- Outputs a `_test.go` file ready to run
+---
 
-`/scaffold` — **Service Scaffolding Skill**
-- Given a service name, generates the boilerplate: main.go, server setup, gRPC server registration, Dockerfile, database migration files, Makefile targets, health check endpoint
-- Ensures consistency across all services
+## Phase 1 — Card Catalog & Auth Services
 
-**Makefile Targets**
+**Goal:** Build the first two microservices, establish gRPC communication patterns, implement self-managed JWT authentication from scratch, and bring online the build/test tooling that was deferred from Phase 0 now that there is real code for it to operate on.
+
+**What you learn:** Go project structure, Protocol Buffers / gRPC implementation, JWT token lifecycle (signing, validation, refresh, expiry), Docker multi-service setup, PostgreSQL schema design, Redis caching, CI/CD pipeline design, testing strategy.
+
+### Tooling brought online with the first services
+
+These were originally listed under Phase 0 but ship in Phase 1 because they need real Go code (or running services) to be useful. They land in the same batch as the first service skeleton.
+
+**Application directory skeleton**
+```
+vendex/
+├── proto/                       # Shared protobuf definitions
+├── services/
+│   ├── auth/
+│   └── card-catalog/
+├── scripts/                     # Developer utility scripts
+└── ...                          # gateway/, frontend/, additional services added in later phases
+```
+
+**CI/CD Pipeline (GitHub Actions)** — replaces the Phase 0 `ci.yml` placeholder
+- `ci.yml`: On every PR — run `go vet`, `golangci-lint`, unit tests, integration tests (with Dockerized Postgres/Kafka/Redis), generate coverage report.
+- `lint.yml`: Enforce `gofmt`, protobuf linting, commit message format.
+- `release.yml`: On merge to `main` — build Docker images for each service, push to GitHub Container Registry, tag with commit SHA.
+
+**Testing Strategy** — applies from Phase 1 onward
+- **Unit tests:** Every service has unit tests for business logic. No external dependencies — use interfaces and mocks.
+- **Integration tests:** Test gRPC endpoints with a real database (Dockerized Postgres spun up in CI). Test Kafka producers/consumers with an embedded or Dockerized Kafka.
+- **End-to-end tests:** After Phase 5, test full workflows through the API Gateway.
+- **Test coverage target:** 70%+ per service. Not a vanity metric — the goal is to catch regressions as services evolve.
+- **Table-driven tests:** Follow Go convention of table-driven test cases for comprehensive input coverage.
+
+**Makefile (top-level)**
 ```makefile
 make proto          # Regenerate Go code from .proto files
 make test           # Run all unit tests
@@ -181,13 +194,17 @@ make migrate        # Run database migrations for all services
 make new-service    # Scaffold a new service (calls /scaffold)
 ```
 
----
+**Additional Claude Code skills** — code-aware, deferred from Phase 0
 
-## Phase 1 — Card Catalog & Auth Services
+`/test` — **Test Generation Skill**
+- Reads a Go source file
+- Generates table-driven test cases covering: happy path, edge cases, error conditions
+- Creates mock implementations for interfaces
+- Outputs a `_test.go` file ready to run
 
-**Goal:** Build the first two microservices, establish gRPC communication patterns, and implement self-managed JWT authentication from scratch.
-
-**What you learn:** Go project structure, Protocol Buffers / gRPC implementation, JWT token lifecycle (signing, validation, refresh, expiry), Docker multi-service setup, PostgreSQL schema design, Redis caching.
+`/scaffold` — **Service Scaffolding Skill**
+- Given a service name, generates the boilerplate: main.go, server setup, gRPC server registration, Dockerfile, database migration files, Makefile targets, health check endpoint
+- Ensures consistency across all services
 
 ### Deliverables
 
