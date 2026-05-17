@@ -1,0 +1,65 @@
+name: vendex
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: vendex
+      POSTGRES_PASSWORD: vendex
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vendex"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Throwaway Postgres for integration tests (separate from dev DB so test
+  # tear-down can't clobber dev data).
+  postgres-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: vendex
+      POSTGRES_PASSWORD: vendex
+      POSTGRES_DB: auth_test_db
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vendex"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    environment:
+      AUTH_GRPC_ADDR: ":50051"
+      AUTH_DATABASE_URL: "postgres://vendex:vendex@postgres:5432/auth_db?sslmode=disable"
+      # Dev-only encryption key. Production must inject a real, secret-managed key.
+      AUTH_KEY_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "50051:50051"
+
+volumes:
+  postgres_data:

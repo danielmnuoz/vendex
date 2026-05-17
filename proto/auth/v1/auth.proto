@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package vendex.auth.v1;
+
+option go_package = "github.com/danielmnuoz/vendex/proto/gen/go/auth/v1;authv1";
+
+// AuthService is the self-managed JWT auth surface for VenDex.
+// All token signing uses RS256 with rotating keys; consumers validate
+// independently by fetching the JWKS from GetJWKS.
+service AuthService {
+  // Register creates a new user account.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Login validates credentials and issues a short-lived access token
+  // plus a long-lived refresh token.
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // RefreshToken exchanges a valid refresh token for a new access token.
+  // The refresh token itself is rotated (old one revoked, new one issued)
+  // to limit the blast radius of a leaked refresh token.
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+
+  // ValidateToken verifies an access token and returns its claims.
+  // Other services may use this OR validate independently via GetJWKS.
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // GetJWKS returns the active public signing keys so other services can
+  // validate access tokens without a round trip to Auth on every request.
+  rpc GetJWKS(GetJWKSRequest) returns (GetJWKSResponse);
+
+  // GetVendorProfile returns the vendor-specific profile for a user.
+  rpc GetVendorProfile(GetVendorProfileRequest) returns (GetVendorProfileResponse);
+
+  // UpdateProfile updates mutable profile fields for the authenticated user.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_VENDOR = 1;
+  ROLE_ATTENDEE = 2;
+  ROLE_ORGANIZER = 3;
+}
+
+// ----- Register -----
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  Role role = 3;
+  // Optional vendor fields (ignored for non-vendor roles).
+  string shop_name = 4;
+  string city = 5;
+  string state = 6;
+}
+
+message RegisterResponse {
+  string user_id = 1;
+}
+
+// ----- Login -----
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 access_token_expires_at = 3;  // unix seconds
+  int64 refresh_token_expires_at = 4; // unix seconds
+}
+
+// ----- RefreshToken -----
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 access_token_expires_at = 3;
+  int64 refresh_token_expires_at = 4;
+}
+
+// ----- ValidateToken -----
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  string user_id = 1;
+  Role role = 2;
+  int64 expires_at = 3;
+}
+
+// ----- JWKS -----
+
+message GetJWKSRequest {}
+
+message JWK {
+  string kid = 1;        // Key ID — matches the JWT `kid` header claim.
+  string alg = 2;        // Always "RS256" in Phase 1.
+  string public_key_pem = 3; // PEM-encoded RSA public key.
+}
+
+message GetJWKSResponse {
+  repeated JWK keys = 1;
+}
+
+// ----- Profile -----
+
+message GetVendorProfileRequest {
+  string vendor_id = 1;
+}
+
+message VendorProfile {
+  string user_id = 1;
+  string email = 2;
+  string shop_name = 3;
+  string city = 4;
+  string state = 5;
+}
+
+message GetVendorProfileResponse {
+  VendorProfile profile = 1;
+}
+
+message UpdateProfileRequest {
+  // The caller's user_id is taken from the access token in the request
+  // metadata, not from the message body — this endpoint cannot be used
+  // to mutate someone else's profile.
+  string shop_name = 1;
+  string city = 2;
+  string state = 3;
+}
+
+message UpdateProfileResponse {
+  VendorProfile profile = 1;
+}
