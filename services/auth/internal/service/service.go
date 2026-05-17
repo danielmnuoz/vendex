@@ -36,6 +36,11 @@ type Service struct {
 	bcryptCost      int
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
+	// dummyPasswordHash is generated at construction at the configured
+	// bcryptCost. Login uses it for unknown-email comparisons so the
+	// response timing matches the real path — without this, an attacker
+	// can distinguish unknown vs. known accounts by latency.
+	dummyPasswordHash []byte
 }
 
 type Config struct {
@@ -58,13 +63,18 @@ func New(s store.Store, signer *jwt.Signer, cfg Config) *Service {
 	if cfg.RefreshTokenTTL == 0 {
 		cfg.RefreshTokenTTL = 7 * 24 * time.Hour
 	}
+	dummy, err := bcrypt.GenerateFromPassword([]byte("placeholder-for-timing"), cfg.BcryptCost)
+	if err != nil {
+		panic(fmt.Sprintf("generate dummy password hash: %v", err))
+	}
 	return &Service{
-		store:           s,
-		signer:          signer,
-		now:             cfg.Now,
-		bcryptCost:      cfg.BcryptCost,
-		accessTokenTTL:  cfg.AccessTokenTTL,
-		refreshTokenTTL: cfg.RefreshTokenTTL,
+		store:             s,
+		signer:            signer,
+		now:               cfg.Now,
+		bcryptCost:        cfg.BcryptCost,
+		accessTokenTTL:    cfg.AccessTokenTTL,
+		refreshTokenTTL:   cfg.RefreshTokenTTL,
+		dummyPasswordHash: dummy,
 	}
 }
 
@@ -120,9 +130,10 @@ type TokenPair struct {
 func (s *Service) Login(ctx context.Context, email, password string) (TokenPair, error) {
 	u, err := s.store.GetUserByEmail(ctx, normalizeEmail(email))
 	if errors.Is(err, store.ErrNotFound) {
-		// Run bcrypt anyway to keep timing roughly constant — protects against
-		// user-enumeration via response timing.
-		_ = bcrypt.CompareHashAndPassword([]byte("$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvali"), []byte(password))
+		// Run bcrypt against a dummy hash generated at the same cost as real
+		// hashes so the timing matches — without this, attackers can
+		// enumerate accounts by latency.
+		_ = bcrypt.CompareHashAndPassword(s.dummyPasswordHash, []byte(password))
 		return TokenPair{}, ErrInvalidCredentials
 	}
 	if err != nil {
@@ -135,23 +146,18 @@ func (s *Service) Login(ctx context.Context, email, password string) (TokenPair,
 }
 
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (TokenPair, error) {
-	hash := hashRefreshToken(refreshToken)
-	t, err := s.store.GetRefreshTokenByHash(ctx, hash)
+	// ConsumeRefreshToken atomically check-and-revokes — if two concurrent
+	// requests present the same token, only one wins; the other gets
+	// ErrTokenRevoked and the caller can't mint a duplicate pair.
+	t, err := s.store.ConsumeRefreshToken(ctx, hashRefreshToken(refreshToken))
 	if errors.Is(err, store.ErrNotFound) {
 		return TokenPair{}, ErrUnauthenticated
 	}
 	if err != nil {
 		return TokenPair{}, err
 	}
-	if t.Revoked {
-		return TokenPair{}, store.ErrTokenRevoked
-	}
 	if s.now().After(t.ExpiresAt) {
 		return TokenPair{}, store.ErrTokenExpired
-	}
-	// Rotate: revoke the used refresh token, issue a fresh pair.
-	if err := s.store.RevokeRefreshToken(ctx, t.ID); err != nil {
-		return TokenPair{}, err
 	}
 	u, err := s.store.GetUserByID(ctx, t.UserID)
 	if err != nil {

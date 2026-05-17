@@ -172,6 +172,61 @@ func TestPostgres_RefreshTokenLifecycle(t *testing.T) {
 	}
 }
 
+func TestPostgres_ConsumeRefreshToken_AtomicCAS(t *testing.T) {
+	// The CAS UPDATE ... WHERE revoked = FALSE must serialize at the row
+	// level — concurrent consume calls for the same token must produce
+	// exactly one winner.
+	pool := setupDB(t)
+	s := NewPostgres(pool)
+	ctx := context.Background()
+
+	u := User{ID: uuid.New(), Email: "race@x.com", PasswordHash: "h", Role: "vendor", CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	if err := s.CreateUser(ctx, u); err != nil {
+		t.Fatal(err)
+	}
+	rt := RefreshToken{
+		ID:        uuid.New(),
+		UserID:    u.ID,
+		TokenHash: "race-hash",
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+	}
+	if err := s.InsertRefreshToken(ctx, rt); err != nil {
+		t.Fatal(err)
+	}
+
+	const n = 16
+	results := make(chan error, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			_, err := s.ConsumeRefreshToken(ctx, "race-hash")
+			results <- err
+		}()
+	}
+	successes, revoked, other := 0, 0, 0
+	for i := 0; i < n; i++ {
+		err := <-results
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, ErrTokenRevoked):
+			revoked++
+		default:
+			other++
+			t.Logf("unexpected: %v", err)
+		}
+	}
+	if successes != 1 {
+		t.Errorf("concurrent consume: got %d successes, want 1", successes)
+	}
+	if revoked != n-1 {
+		t.Errorf("concurrent consume: got %d ErrTokenRevoked, want %d", revoked, n-1)
+	}
+	if other != 0 {
+		t.Errorf("got %d unexpected errors", other)
+	}
+}
+
 func TestPostgres_SigningKey_OneActive(t *testing.T) {
 	pool := setupDB(t)
 	s := NewPostgres(pool)

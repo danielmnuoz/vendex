@@ -164,6 +164,39 @@ func TestRefreshToken(t *testing.T) {
 	})
 }
 
+func TestRefreshToken_ConcurrentRotation(t *testing.T) {
+	// Two concurrent refresh calls with the same token must result in
+	// exactly one success — never two. Before the ConsumeRefreshToken CAS
+	// fix, this would race and mint two valid token pairs.
+	svc, _ := newSvc(t)
+	ctx := context.Background()
+	_, _ = svc.Register(ctx, RegisterParams{Email: "a@b.com", Password: "password1", Role: "vendor"})
+	tp, _ := svc.Login(ctx, "a@b.com", "password1")
+
+	type result struct {
+		tp  TokenPair
+		err error
+	}
+	const n = 8
+	results := make(chan result, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			out, err := svc.RefreshToken(ctx, tp.RefreshToken)
+			results <- result{out, err}
+		}()
+	}
+	successes := 0
+	for i := 0; i < n; i++ {
+		r := <-results
+		if r.err == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Errorf("concurrent refresh: got %d successes, want exactly 1", successes)
+	}
+}
+
 func TestRefreshToken_Expired(t *testing.T) {
 	ctx := context.Background()
 	svc, fake := newSvc(t)

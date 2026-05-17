@@ -26,11 +26,11 @@ func TestAEAD_RoundTrip(t *testing.T) {
 		make([]byte, 4096),
 	}
 	for i, pt := range plaintexts {
-		ct, err := a.Encrypt(pt)
+		ct, err := a.Encrypt(pt, nil)
 		if err != nil {
 			t.Fatalf("encrypt %d: %v", i, err)
 		}
-		got, err := a.Decrypt(ct)
+		got, err := a.Decrypt(ct, nil)
 		if err != nil {
 			t.Fatalf("decrypt %d: %v", i, err)
 		}
@@ -43,10 +43,29 @@ func TestAEAD_RoundTrip(t *testing.T) {
 func TestAEAD_DistinctCiphertexts(t *testing.T) {
 	a, _ := NewAEAD(newTestKeyB64(t))
 	pt := []byte("same plaintext")
-	c1, _ := a.Encrypt(pt)
-	c2, _ := a.Encrypt(pt)
+	c1, _ := a.Encrypt(pt, nil)
+	c2, _ := a.Encrypt(pt, nil)
 	if c1 == c2 {
 		t.Error("expected distinct ciphertexts for repeated encryption (random nonce)")
+	}
+}
+
+func TestAEAD_AAD_BindsCiphertext(t *testing.T) {
+	a, _ := NewAEAD(newTestKeyB64(t))
+	pt := []byte("secret")
+	ct, _ := a.Encrypt(pt, []byte("context-A"))
+
+	// Wrong AAD → must fail.
+	if _, err := a.Decrypt(ct, []byte("context-B")); err == nil {
+		t.Error("expected decrypt to fail with mismatched aad")
+	}
+	// Right AAD → must succeed.
+	got, err := a.Decrypt(ct, []byte("context-A"))
+	if err != nil {
+		t.Fatalf("decrypt with correct aad: %v", err)
+	}
+	if string(got) != "secret" {
+		t.Errorf("plaintext: got %q want secret", got)
 	}
 }
 
@@ -70,12 +89,12 @@ func TestNewAEAD_InvalidKeys(t *testing.T) {
 
 func TestAEAD_TamperedCiphertext(t *testing.T) {
 	a, _ := NewAEAD(newTestKeyB64(t))
-	ct, _ := a.Encrypt([]byte("hello"))
+	ct, _ := a.Encrypt([]byte("hello"), nil)
 	// Flip a byte deep in the ciphertext.
 	raw, _ := base64.StdEncoding.DecodeString(ct)
 	raw[len(raw)-1] ^= 0x01
 	tampered := base64.StdEncoding.EncodeToString(raw)
-	if _, err := a.Decrypt(tampered); err == nil {
+	if _, err := a.Decrypt(tampered, nil); err == nil {
 		t.Error("expected auth failure on tampered ciphertext")
 	}
 }

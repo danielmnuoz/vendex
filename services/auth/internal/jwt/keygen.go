@@ -35,7 +35,10 @@ func GenerateAndStoreKey(ctx context.Context, s store.Store, a *crypto.AEAD) (st
 		Type:  "PUBLIC KEY",
 		Bytes: pubBytes,
 	})
-	encryptedPriv, err := a.Encrypt(privPEM)
+	// Generate the new key's UUID before encrypting so we can bind the
+	// ciphertext to it via AAD — see decodePrivate in jwt.go for why.
+	keyID := uuid.New()
+	encryptedPriv, err := a.Encrypt(privPEM, keyID[:])
 	if err != nil {
 		return store.SigningKey{}, fmt.Errorf("encrypt private key: %w", err)
 	}
@@ -50,7 +53,7 @@ func GenerateAndStoreKey(ctx context.Context, s store.Store, a *crypto.AEAD) (st
 	}
 
 	k := store.SigningKey{
-		ID:                  uuid.New(),
+		ID:                  keyID,
 		PublicKeyPEM:        string(pubPEM),
 		PrivateKeyEncrypted: encryptedPriv,
 		Alg:                 "RS256",

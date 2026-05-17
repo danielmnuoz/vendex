@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 
 	authv1 "github.com/danielmnuoz/vendex/proto/gen/go/auth/v1"
@@ -121,6 +122,10 @@ func (s *Server) UpdateProfile(ctx context.Context, req *authv1.UpdateProfileReq
 // userIDFromAccessToken pulls the bearer token from gRPC metadata and
 // validates it. UpdateProfile uses this to enforce "you can only update
 // your own profile" without trusting client-supplied IDs.
+//
+// TODO(phase-2): replace with a proper unary interceptor once a second
+// authed endpoint exists — see follow-up issue. Per-handler auth will
+// drift as more services come online.
 func userIDFromAccessToken(ctx context.Context, svc *service.Service) (uuid.UUID, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -130,16 +135,33 @@ func userIDFromAccessToken(ctx context.Context, svc *service.Service) (uuid.UUID
 	if len(auths) == 0 {
 		return uuid.Nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
-	tok := strings.TrimPrefix(auths[0], "Bearer ")
-	tok = strings.TrimPrefix(tok, "bearer ")
-	if tok == "" {
-		return uuid.Nil, status.Error(codes.Unauthenticated, "empty bearer token")
+	tok, err := stripBearer(auths[0])
+	if err != nil {
+		return uuid.Nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 	userID, _, _, err := svc.ValidateToken(ctx, tok)
 	if err != nil {
 		return uuid.Nil, status.Error(codes.Unauthenticated, "invalid access token")
 	}
 	return userID, nil
+}
+
+// stripBearer splits an Authorization header into scheme and credentials,
+// case-insensitively requires the scheme to be "Bearer", and returns the
+// credentials. Rejects malformed headers like "Bearer bearer foo".
+func stripBearer(h string) (string, error) {
+	idx := strings.IndexByte(h, ' ')
+	if idx < 0 {
+		return "", errors.New("authorization header missing scheme")
+	}
+	scheme, token := h[:idx], strings.TrimSpace(h[idx+1:])
+	if !strings.EqualFold(scheme, "Bearer") {
+		return "", errors.New("authorization scheme must be Bearer")
+	}
+	if token == "" {
+		return "", errors.New("empty bearer token")
+	}
+	return token, nil
 }
 
 func userToProfile(u store.User) *authv1.VendorProfile {
@@ -191,6 +213,9 @@ func mapError(err error) error {
 	case errors.Is(err, store.ErrTokenRevoked), errors.Is(err, store.ErrTokenExpired):
 		return status.Error(codes.Unauthenticated, err.Error())
 	default:
-		return status.Error(codes.Internal, err.Error())
+		// Don't leak internal error text (pgx errors, parse failures, etc.)
+		// to the client — log it server-side and return a generic message.
+		log.Printf("auth: internal error: %v", err)
+		return status.Error(codes.Internal, "internal error")
 	}
 }

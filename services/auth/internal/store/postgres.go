@@ -109,6 +109,38 @@ func (p *Postgres) RevokeRefreshToken(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// ConsumeRefreshToken is the atomic CAS that prevents the refresh-rotation
+// race — two concurrent refresh calls cannot both succeed because the
+// UPDATE only matches rows where revoked = FALSE, and Postgres serializes
+// updates to the same row.
+func (p *Postgres) ConsumeRefreshToken(ctx context.Context, hash string) (RefreshToken, error) {
+	var t RefreshToken
+	err := p.pool.QueryRow(ctx, `
+		UPDATE refresh_tokens
+		SET revoked = TRUE
+		WHERE token_hash = $1 AND revoked = FALSE
+		RETURNING id, user_id, token_hash, expires_at, revoked, created_at
+	`, hash).Scan(&t.ID, &t.UserID, &t.TokenHash, &t.ExpiresAt, &t.Revoked, &t.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Could be either: the hash doesn't exist, or it does exist but is
+		// already revoked. Distinguish so the service can return the right
+		// error code.
+		var revoked bool
+		lookupErr := p.pool.QueryRow(ctx, `SELECT revoked FROM refresh_tokens WHERE token_hash = $1`, hash).Scan(&revoked)
+		if errors.Is(lookupErr, pgx.ErrNoRows) {
+			return RefreshToken{}, ErrNotFound
+		}
+		if lookupErr != nil {
+			return RefreshToken{}, fmt.Errorf("consume lookup: %w", lookupErr)
+		}
+		return RefreshToken{}, ErrTokenRevoked
+	}
+	if err != nil {
+		return RefreshToken{}, fmt.Errorf("consume refresh token: %w", err)
+	}
+	return t, nil
+}
+
 func (p *Postgres) GetActiveSigningKey(ctx context.Context) (SigningKey, error) {
 	var k SigningKey
 	err := p.pool.QueryRow(ctx, `

@@ -94,6 +94,21 @@ func (f *Fake) GetRefreshTokenByHash(_ context.Context, hash string) (RefreshTok
 	return t, nil
 }
 
+func (f *Fake) ConsumeRefreshToken(_ context.Context, hash string) (RefreshToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	t, ok := f.refreshTokens[hash]
+	if !ok {
+		return RefreshToken{}, ErrNotFound
+	}
+	if t.Revoked {
+		return RefreshToken{}, ErrTokenRevoked
+	}
+	t.Revoked = true
+	f.refreshTokens[hash] = t
+	return t, nil
+}
+
 func (f *Fake) RevokeRefreshToken(_ context.Context, id uuid.UUID) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

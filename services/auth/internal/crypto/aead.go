@@ -36,18 +36,22 @@ func NewAEAD(keyB64 string) (*AEAD, error) {
 	return &AEAD{gcm: gcm}, nil
 }
 
-// Encrypt returns base64(nonce || ciphertext).
-func (a *AEAD) Encrypt(plaintext []byte) (string, error) {
+// Encrypt returns base64(nonce || ciphertext). The aad argument binds the
+// ciphertext to its context (e.g., the signing-key UUID) — decryption with
+// a different aad fails authentication. Pass nil if no binding is needed.
+func (a *AEAD) Encrypt(plaintext, aad []byte) (string, error) {
 	nonce := make([]byte, a.gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", fmt.Errorf("read nonce: %w", err)
 	}
-	ct := a.gcm.Seal(nil, nonce, plaintext, nil)
+	ct := a.gcm.Seal(nil, nonce, plaintext, aad)
 	out := append(nonce, ct...)
 	return base64.StdEncoding.EncodeToString(out), nil
 }
 
-func (a *AEAD) Decrypt(b64 string) ([]byte, error) {
+// Decrypt verifies that the ciphertext was produced by Encrypt with the
+// same aad. Returns an auth error if the aad doesn't match.
+func (a *AEAD) Decrypt(b64 string, aad []byte) ([]byte, error) {
 	raw, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
@@ -57,7 +61,7 @@ func (a *AEAD) Decrypt(b64 string) ([]byte, error) {
 		return nil, errors.New("ciphertext too short")
 	}
 	nonce, ct := raw[:nonceSize], raw[nonceSize:]
-	pt, err := a.gcm.Open(nil, nonce, ct, nil)
+	pt, err := a.gcm.Open(nil, nonce, ct, aad)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt: %w", err)
 	}

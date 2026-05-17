@@ -170,6 +170,36 @@ func TestServer_UpdateProfile_WithBearer(t *testing.T) {
 	}
 }
 
+func TestServer_UpdateProfile_BearerVariants(t *testing.T) {
+	c, cleanup := newClient(t)
+	defer cleanup()
+	ctx := context.Background()
+	_, _ = c.Register(ctx, &authv1.RegisterRequest{Email: "a@b.com", Password: "password1", Role: authv1.Role_ROLE_VENDOR})
+	login, _ := c.Login(ctx, &authv1.LoginRequest{Email: "a@b.com", Password: "password1"})
+
+	cases := []struct {
+		name string
+		auth string
+		want codes.Code
+	}{
+		{"correct_bearer", "Bearer " + login.GetAccessToken(), codes.OK},
+		{"lowercase_bearer", "bearer " + login.GetAccessToken(), codes.OK},
+		{"missing_scheme", login.GetAccessToken(), codes.Unauthenticated},
+		{"wrong_scheme", "Basic " + login.GetAccessToken(), codes.Unauthenticated},
+		{"empty_token", "Bearer ", codes.Unauthenticated},
+		{"double_bearer_prefix", "Bearer Bearer " + login.GetAccessToken(), codes.Unauthenticated},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			authCtx := metadata.AppendToOutgoingContext(ctx, "authorization", tc.auth)
+			_, err := c.UpdateProfile(authCtx, &authv1.UpdateProfileRequest{ShopName: "x"})
+			if status.Code(err) != tc.want {
+				t.Errorf("got %v, want %v (err=%v)", status.Code(err), tc.want, err)
+			}
+		})
+	}
+}
+
 func TestServer_RefreshToken_Rotation(t *testing.T) {
 	c, cleanup := newClient(t)
 	defer cleanup()

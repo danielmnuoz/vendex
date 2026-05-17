@@ -56,6 +56,11 @@ type Store interface {
 	InsertRefreshToken(ctx context.Context, t RefreshToken) error
 	GetRefreshTokenByHash(ctx context.Context, hash string) (RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
+	// ConsumeRefreshToken atomically marks a refresh token revoked and returns
+	// the row, but only if it was not already revoked. Returns ErrNotFound if
+	// the hash doesn't exist; ErrTokenRevoked if it was already revoked
+	// (concurrent rotation race — caller treats as replay).
+	ConsumeRefreshToken(ctx context.Context, hash string) (RefreshToken, error)
 
 	GetActiveSigningKey(ctx context.Context) (SigningKey, error)
 	ListJWKSKeys(ctx context.Context) ([]SigningKey, error)

@@ -96,7 +96,12 @@ func (s *Signer) Verify(ctx context.Context, raw string) (Claims, error) {
 }
 
 func (s *Signer) decodePrivate(k store.SigningKey) (*rsa.PrivateKey, error) {
-	pemBytes, err := s.aead.Decrypt(k.PrivateKeyEncrypted)
+	// AAD = key UUID bytes binds the ciphertext to its signing_keys row, so
+	// a DB-write attacker cannot swap encrypted-private-key blobs between
+	// rows and have the service happily sign with the "wrong" key for a
+	// given kid.
+	aad := k.ID[:]
+	pemBytes, err := s.aead.Decrypt(k.PrivateKeyEncrypted, aad)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt private key: %w", err)
 	}
