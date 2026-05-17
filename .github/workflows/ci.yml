@@ -79,7 +79,7 @@ jobs:
         env:
           POSTGRES_USER: vendex
           POSTGRES_PASSWORD: vendex
-          POSTGRES_DB: auth_test_db
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: >-
@@ -96,9 +96,17 @@ jobs:
           go-version: '1.25'
           cache: true
 
+      - name: Create per-service test databases
+        env:
+          PGPASSWORD: vendex
+        run: |
+          psql -h localhost -U vendex -d postgres -c "CREATE DATABASE auth_test_db"
+          psql -h localhost -U vendex -d postgres -c "CREATE DATABASE card_catalog_test_db"
+
       - name: Run integration tests
         env:
-          AUTH_TEST_DATABASE_URL: "postgres://vendex:vendex@localhost:5432/auth_test_db?sslmode=disable"
+          AUTH_TEST_DATABASE_URL:          "postgres://vendex:vendex@localhost:5432/auth_test_db?sslmode=disable"
+          CARD_CATALOG_TEST_DATABASE_URL:  "postgres://vendex:vendex@localhost:5432/card_catalog_test_db?sslmode=disable"
         run: go test -race -count=1 -tags integration ./...
 
   build:
@@ -110,3 +118,6 @@ jobs:
 
       - name: Build auth image
         run: docker build -f services/auth/Dockerfile -t vendex/auth:ci .
+
+      - name: Build card-catalog image
+        run: docker build -f services/card-catalog/Dockerfile -t vendex/card-catalog:ci .

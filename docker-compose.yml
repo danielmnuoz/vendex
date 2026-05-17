@@ -19,13 +19,16 @@ services:
       retries: 5
 
   # Throwaway Postgres for integration tests (separate from dev DB so test
-  # tear-down can't clobber dev data).
+  # tear-down can't clobber dev data). Hosts both auth_test_db and
+  # card_catalog_test_db.
   postgres-test:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: vendex
       POSTGRES_PASSWORD: vendex
-      POSTGRES_DB: auth_test_db
+      POSTGRES_MULTIPLE_DATABASES: auth_test_db,card_catalog_test_db
+    volumes:
+      - ./scripts/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
     tmpfs:
       - /var/lib/postgresql/data
     ports:
@@ -60,6 +63,22 @@ services:
         condition: service_healthy
     ports:
       - "50051:50051"
+
+  card-catalog:
+    build:
+      context: .
+      dockerfile: services/card-catalog/Dockerfile
+    environment:
+      CARD_CATALOG_GRPC_ADDR: ":50052"
+      CARD_CATALOG_DATABASE_URL: "postgres://vendex:vendex@postgres:5432/card_catalog_db?sslmode=disable"
+      CARD_CATALOG_REDIS_ADDR: "redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50052:50052"
 
 volumes:
   postgres_data:

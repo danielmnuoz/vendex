@@ -12,8 +12,10 @@ GOLANGCI_LINT   := $(BIN)/golangci-lint
 
 DOCKER_COMPOSE  ?= docker compose
 
-AUTH_DATABASE_URL      ?= postgres://vendex:vendex@localhost:5432/auth_db?sslmode=disable
-AUTH_TEST_DATABASE_URL ?= postgres://vendex:vendex@localhost:5433/auth_test_db?sslmode=disable
+AUTH_DATABASE_URL              ?= postgres://vendex:vendex@localhost:5432/auth_db?sslmode=disable
+AUTH_TEST_DATABASE_URL         ?= postgres://vendex:vendex@localhost:5433/auth_test_db?sslmode=disable
+CARD_CATALOG_DATABASE_URL      ?= postgres://vendex:vendex@localhost:5432/card_catalog_db?sslmode=disable
+CARD_CATALOG_TEST_DATABASE_URL ?= postgres://vendex:vendex@localhost:5433/card_catalog_test_db?sslmode=disable
 
 .PHONY: help
 help: ## Show this help.
@@ -76,8 +78,10 @@ test-coverage: ## Run unit tests with coverage.
 	$(GO) tool cover -func=coverage.out | tail -1
 
 .PHONY: test-integration
-test-integration: ## Run integration tests (requires AUTH_TEST_DATABASE_URL).
-	AUTH_TEST_DATABASE_URL=$(AUTH_TEST_DATABASE_URL) $(GO) test -race -count=1 -tags integration ./...
+test-integration: ## Run integration tests (requires test-DB env vars; defaults point at the docker-compose postgres-test service).
+	AUTH_TEST_DATABASE_URL=$(AUTH_TEST_DATABASE_URL) \
+	CARD_CATALOG_TEST_DATABASE_URL=$(CARD_CATALOG_TEST_DATABASE_URL) \
+	$(GO) test -race -count=1 -tags integration ./...
 
 # ---------- build ----------
 
@@ -85,6 +89,8 @@ test-integration: ## Run integration tests (requires AUTH_TEST_DATABASE_URL).
 build: ## Build all service binaries into ./bin.
 	mkdir -p bin
 	$(GO) build -o bin/auth ./services/auth/cmd/server
+	$(GO) build -o bin/card-catalog ./services/card-catalog/cmd/server
+	$(GO) build -o bin/seed-cards ./services/card-catalog/cmd/seed-cards
 
 .PHONY: docker-build
 docker-build: ## Build all service Docker images.
@@ -108,14 +114,20 @@ logs: ## Tail logs from the local dev environment.
 
 .PHONY: migrate-up
 migrate-up: $(MIGRATE) ## Apply all pending migrations for every service.
-	$(MIGRATE) -path services/auth/migrations -database "$(AUTH_DATABASE_URL)" up
+	$(MIGRATE) -path services/auth/migrations         -database "$(AUTH_DATABASE_URL)"         up
+	$(MIGRATE) -path services/card-catalog/migrations -database "$(CARD_CATALOG_DATABASE_URL)" up
 
 .PHONY: migrate-down
 migrate-down: $(MIGRATE) ## Roll back the most recent migration for every service.
-	$(MIGRATE) -path services/auth/migrations -database "$(AUTH_DATABASE_URL)" down 1
+	$(MIGRATE) -path services/auth/migrations         -database "$(AUTH_DATABASE_URL)"         down 1
+	$(MIGRATE) -path services/card-catalog/migrations -database "$(CARD_CATALOG_DATABASE_URL)" down 1
 
 .PHONY: migrate
 migrate: migrate-up ## Alias for migrate-up.
+
+.PHONY: seed-cards
+seed-cards: ## Populate card_catalog_db.cards from TCGdex (one-time per environment; idempotent on re-run).
+	CARD_CATALOG_DATABASE_URL=$(CARD_CATALOG_DATABASE_URL) $(GO) run ./services/card-catalog/cmd/seed-cards
 
 # ---------- secrets ----------
 
