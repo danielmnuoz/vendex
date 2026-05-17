@@ -24,7 +24,7 @@
 | Auth | Self-managed JWT (Go) | No third-party auth provider |
 | Containerization | Docker | Multi-service Docker Compose |
 | Orchestration | Kubernetes (Kind locally) | Production deployment target |
-| Card data source | Pokemon TCG API (pokemontcg.io) | Free, no API key required |
+| Card data source | TCGdex (tcgdex.net) | Free, open-source, no API key, no rate limit. (Note: pokemontcg.io was absorbed into the commercial Scrydex platform — TCGdex is now the durable free option for Pokemon card identity data.) |
 | CI/CD | GitHub Actions | Build, test, deploy pipeline |
 | Container registry | GitHub Container Registry | Free for public repos |
 | Hosting (eventual) | Vercel (frontend) + VPS (backend) | Deferred until needed |
@@ -118,7 +118,7 @@ Sections matching the `/pr` skill's output (Summary, What changed and why, Testi
 
 **Claude Code Custom Commands (Phase 0 scope)**
 
-Only the skills that can operate on what exists today (specs, markdown, PRs) ship in Phase 0. Code-aware skills (`/test`, `/scaffold`) move to Phase 1.
+Only the skills that can operate on what exists today (specs, markdown, PRs) ship in Phase 0. Code-aware skills (`/test`) move to Phase 1.
 
 `/pr` — **PR Creation Skill**
 - Analyzes staged changes (git diff)
@@ -169,7 +169,7 @@ vendex/
 ```
 
 **CI/CD Pipeline (GitHub Actions)** — replaces the Phase 0 `ci.yml` placeholder
-- `ci.yml`: On every PR — run `go vet`, `golangci-lint`, unit tests, integration tests (with Dockerized Postgres/Kafka/Redis), generate coverage report.
+- `ci.yml`: On every PR — run `go vet`, `golangci-lint`, unit tests, integration tests (with Dockerized Postgres + Redis in Phase 1; Redpanda added when Phase 2 services land), generate coverage report.
 - `lint.yml`: Enforce `gofmt`, protobuf linting, commit message format.
 - `release.yml`: On merge to `main` — build Docker images for each service, push to GitHub Container Registry, tag with commit SHA.
 
@@ -191,7 +191,6 @@ make docker-build   # Build all Docker images
 make up             # docker-compose up (full local environment)
 make down           # docker-compose down
 make migrate        # Run database migrations for all services
-make new-service    # Scaffold a new service (calls /scaffold)
 ```
 
 **Additional Claude Code skills** — code-aware, deferred from Phase 0
@@ -202,14 +201,12 @@ make new-service    # Scaffold a new service (calls /scaffold)
 - Creates mock implementations for interfaces
 - Outputs a `_test.go` file ready to run
 
-`/scaffold` — **Service Scaffolding Skill**
-- Given a service name, generates the boilerplate: main.go, server setup, gRPC server registration, Dockerfile, database migration files, Makefile targets, health check endpoint
-- Ensures consistency across all services
+(A `/scaffold` skill was considered but dropped — with only two services in Phase 1, codifying "service boilerplate" would encode the wrong patterns prematurely. Revisit in Phase 2+ once we have three or more services and can see what's actually repeated.)
 
 ### Deliverables
 
 **Card Catalog Service (Go + gRPC)**
-- Syncs card data from the Pokemon TCG API into a local PostgreSQL table.
+- Syncs card data from TCGdex into a local PostgreSQL table via a one-time seed script (`scripts/seed-cards.go`) run per environment. All user-facing reads go through our local Postgres + Redis — the external API is never on the request path.
 - Normalizes cards into a canonical schema: card ID, name, set, set series, rarity, image URL, release date.
 - Redis cache layer for frequent lookups (cards don't change often — high cache hit rate).
 - gRPC endpoints:
@@ -217,7 +214,7 @@ make new-service    # Scaffold a new service (calls /scaffold)
   - `GetCardById(card_id)` → single card
   - `GetCardsByIds(card_ids)` → batch lookup
   - `ListSets()` → all available sets
-  - `SyncCards()` → trigger re-sync from Pokemon TCG API
+- Re-sync (when new Pokemon sets release, ~quarterly) is deferred. Phase 1 ships the seed script only; the cron job or admin-gated `SyncCards` endpoint is tracked as a follow-up issue.
 
 **Auth Service (Go + gRPC + Self-Managed JWT)**
 - Registration: email + password. Password hashed with bcrypt.
@@ -245,11 +242,11 @@ make new-service    # Scaffold a new service (calls /scaffold)
 services:
   postgres:       # Shared Postgres instance, separate databases per service
   redis:          # Shared Redis instance
-  kafka:          # Kafka broker (or Redpanda)
-  zookeeper:      # If using Kafka (not needed with Redpanda)
   card-catalog:   # Card Catalog Service
   auth:           # Auth Service
 ```
+
+The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper) is deferred to Phase 2 when the first producer/consumer services land. Adding it in Phase 1 would mean running a broker no service talks to.
 
 ### Database Schemas
 
@@ -257,7 +254,7 @@ services:
 | Column | Type | Notes |
 |---|---|---|
 | id | UUID | Primary key |
-| external_id | VARCHAR | Pokemon TCG API ID (e.g., "sv3-100") |
+| external_id | VARCHAR | TCGdex card ID (e.g., "sv03-100") |
 | name | VARCHAR | Card name |
 | set_id | VARCHAR | Set identifier |
 | set_name | VARCHAR | Human-readable set name |
@@ -716,7 +713,7 @@ Design the data model to support this from Phase 2 onward (timestamps, event sco
 
 | Resource | Cost |
 |---|---|
-| Pokemon TCG API | Free |
+| TCGdex card data | Free |
 | PostgreSQL | Free (Docker locally) |
 | Kafka / Redpanda | Free (Docker locally) |
 | Redis | Free (Docker locally) |
@@ -735,7 +732,7 @@ Design the data model to support this from Phase 2 onward (timestamps, event sco
 | Phase | Focus | Key Technologies |
 |---|---|---|
 | 0 | Dev tooling, CI/CD, agentic skills | Claude Code, GitHub Actions, Make, testing frameworks |
-| 1 | Card Catalog, Auth (JWT/JWKS) | Go, gRPC, Protobuf, Docker, PostgreSQL, Redis, JWT/RSA |
+| 1 | Card Catalog (TCGdex seed), Auth (JWT/JWKS), foundational tooling (Makefile, docker-compose, real CI) | Go, gRPC, Protobuf, Docker, PostgreSQL, Redis, JWT/RSA |
 | 2 | Inventory, Buy Lists, Events, Kafka | Go, Kafka, CSV ingestion, event-driven architecture |
 | 3 | Overlap Detection, Notifications | Redis set operations, Kafka consumers, scoring algorithms |
 | 4 | **API Gateway + Vendor Frontend** (vendor-vendor product goes live; soft-launch validation gate) | Next.js, REST-to-gRPC, Vercel, mobile-first design |

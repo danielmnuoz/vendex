@@ -187,7 +187,7 @@ The product is built in two halves: **vendor-vendor first** (Phases 1-4), then *
 ### Phases 1-3 Features (Vendor-Vendor Backend)
 
 - Vendor registration and authentication
-- Pokemon card catalog with search (powered by Pokemon TCG API data)
+- Pokemon card catalog with search (powered by TCGdex data, seeded into our local store)
 - Inventory management (manual entry + CSV bulk upload)
 - Buy list management
 - Event creation (by organizers, via admin script for v1) and vendor registration for events
