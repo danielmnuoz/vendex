@@ -2,7 +2,7 @@
 
 ## Technical Goals
 
-1. Build a production-grade distributed system using Go, gRPC, Kafka, Redis, PostgreSQL, Docker, and Kubernetes.
+1. Build a production-grade distributed system using Java + Spring Boot, gRPC, Kafka, Redis, PostgreSQL, Docker, and Kubernetes.
 2. Learn microservice architecture through a real domain problem, not a toy example.
 3. Develop agentic engineering workflows — automated PR creation, issue generation, code review, and architectural documentation using Claude Code and custom tooling.
 4. Establish professional development practices: testing pipelines, CI/CD, observability, and structured code review.
@@ -14,15 +14,21 @@
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Backend services | Go | One binary per service |
-| Inter-service communication | gRPC + Protocol Buffers | Shared proto definitions |
-| Event streaming | Kafka (or Redpanda locally) | Async inter-service events |
-| Caching / overlap detection | Redis | Sorted sets, key-value lookups |
+| Backend services | Java 21 + Spring Boot 3.x | One Spring Boot application per service |
+| Build tool | Maven (multi-module) | Parent POM at the repo root, per-service POMs under `services/` |
+| Inter-service communication | gRPC + Protocol Buffers | Shared proto definitions, `grpc-java` + `protobuf-maven-plugin` |
+| DB access | Spring Data JDBC + HikariCP | Repository abstraction with explicit SQL; no JPA/Hibernate magic |
+| DB migrations | Flyway | Run on Spring Boot startup |
+| JWT / JOSE | Nimbus JOSE + JWT | RS256 signing, JWKS publishing |
+| Password hashing | spring-security-crypto (`BCryptPasswordEncoder`) | Constant-time compare built in |
+| Encryption at rest | JCA (`Cipher` with `AES/GCM/NoPadding`) | Stdlib — no extra dependency |
+| Event streaming | Kafka (Redpanda locally) | Spring for Apache Kafka, async inter-service events |
+| Caching / overlap detection | Redis (Spring Data Redis + Lettuce) | Sorted sets, key-value lookups |
 | Primary data store | PostgreSQL | Each service owns its schema |
 | Frontend | React (Next.js) | Hosted on Vercel free tier |
-| API Gateway | Go | REST-to-gRPC translation |
-| Auth | Self-managed JWT (Go) | No third-party auth provider |
-| Containerization | Docker | Multi-service Docker Compose |
+| API Gateway | Java + Spring Boot (Spring Cloud Gateway) | REST-to-gRPC translation |
+| Auth | Self-managed JWT (Java + Spring Boot) | No third-party auth provider |
+| Containerization | Docker | Multi-service Docker Compose; per-service Dockerfile uses `eclipse-temurin:21-jre` |
 | Orchestration | Kubernetes (Kind locally) | Production deployment target |
 | Card data source | TCGdex (tcgdex.net) | Free, open-source, no API key, no rate limit. (Note: pokemontcg.io was absorbed into the commercial Scrydex platform — TCGdex is now the durable free option for Pokemon card identity data.) |
 | CI/CD | GitHub Actions | Build, test, deploy pipeline |
@@ -75,7 +81,7 @@ Each service:
 
 ## Phase 0 — Design, Specs & Agentic Workflow Setup
 
-**Goal:** Establish the things that exist *independently* of application code — visual design, written specs, collaboration rules, and the Claude Code skills needed to operate on the repo. Anything that needs real Go code to be useful (linters, build tooling, docker-compose, service scaffolding) is deferred to Phase 1, where it ships alongside the first consumer. This keeps Phase 0 from accumulating placeholder scaffolds that drift before they're used.
+**Goal:** Establish the things that exist *independently* of application code — visual design, written specs, collaboration rules, and the Claude Code skills needed to operate on the repo. Anything that needs real Java code to be useful (linters, build tooling, docker-compose, service scaffolding) is deferred to Phase 1, where it ships alongside the first consumer. This keeps Phase 0 from accumulating placeholder scaffolds that drift before they're used.
 
 **What you learn:** Claude Code custom commands, GitHub CLI automation, design-token workflows, spec-driven development.
 
@@ -108,7 +114,7 @@ vendex/
 Application directories (`proto/`, `services/`, `gateway/`, `frontend/`, `scripts/`) are created in Phase 1 when they have something to hold.
 
 **CI skeleton (`ci.yml`)**
-A placeholder workflow that runs on every PR with `continue-on-error: true`. It checks out the repo and sets up Go but performs no real validation — its job is to exist so Phase 1 can flip on real steps (`go vet`, `golangci-lint`, unit + integration tests) without restructuring the workflow. `lint.yml` and `release.yml` are deferred to Phase 1.
+A placeholder workflow that runs on every PR with `continue-on-error: true`. It checks out the repo and sets up the JDK (via `actions/setup-java`) but performs no real validation — its job is to exist so Phase 1 can flip on real steps (`mvn verify`, `spotless:check`, unit + integration tests) without restructuring the workflow. `lint.yml` and `release.yml` are deferred to Phase 1.
 
 **PR Template (`.github/PULL_REQUEST_TEMPLATE.md`)**
 Sections matching the `/pr` skill's output (Summary, What changed and why, Testing, Related issues) plus a project-specific checklist: specs updated if behavior changed, UI consumes `ui/tokens.css` rather than hex literals, mockups in `ui/vendex.pen` updated via pencil MCP if visual design changed.
@@ -135,7 +141,7 @@ Only the skills that can operate on what exists today (specs, markdown, PRs) shi
 
 `/review` — **Code Review Skill**
 - Reads a PR diff
-- Analyzes for: correctness, error handling, test coverage gaps, naming conventions, Go idioms, gRPC best practices, potential concurrency issues
+- Analyzes for: correctness, error handling, test coverage gaps, naming conventions, Java/Spring Boot idioms, gRPC best practices, potential concurrency issues
 - Produces a structured review with line-specific comments
 - Flags severity levels: critical, suggestion, nit
 
@@ -151,62 +157,73 @@ Only the skills that can operate on what exists today (specs, markdown, PRs) shi
 
 **Goal:** Build the first two microservices, establish gRPC communication patterns, implement self-managed JWT authentication from scratch, and bring online the build/test tooling that was deferred from Phase 0 now that there is real code for it to operate on.
 
-**What you learn:** Go project structure, Protocol Buffers / gRPC implementation, JWT token lifecycle (signing, validation, refresh, expiry), Docker multi-service setup, PostgreSQL schema design, Redis caching, CI/CD pipeline design, testing strategy.
+**What you learn:** Maven multi-module project structure, Spring Boot application layout (annotations, dependency injection, configuration), Protocol Buffers / gRPC implementation (`grpc-java`), JWT token lifecycle (signing, validation, refresh, expiry) with Nimbus JOSE, Docker multi-service setup, PostgreSQL schema design with Flyway migrations, Spring Data JDBC, Redis caching with Spring Data Redis, CI/CD pipeline design, testing strategy with JUnit 5 + Testcontainers.
 
 ### Tooling brought online with the first services
 
-These were originally listed under Phase 0 but ship in Phase 1 because they need real Go code (or running services) to be useful. They land in the same batch as the first service skeleton.
+These were originally listed under Phase 0 but ship in Phase 1 because they need real Java code (or running services) to be useful. They land in the same batch as the first service skeleton.
 
-**Application directory skeleton**
+**Application directory skeleton (Maven multi-module)**
 ```
 vendex/
-├── proto/                       # Shared protobuf definitions
+├── pom.xml                          # Parent POM — shared dependency mgmt, plugin config
+├── proto/                           # Shared proto module
+│   ├── pom.xml                      # Generates Java + grpc-java code into target/generated-sources
+│   └── src/main/proto/
+│       ├── auth/v1/auth.proto
+│       └── cards/v1/cards.proto
 ├── services/
 │   ├── auth/
+│   │   ├── pom.xml                  # Depends on the proto module
+│   │   ├── Dockerfile
+│   │   └── src/
+│   │       ├── main/java/com/vendex/auth/...
+│   │       ├── main/resources/      # application.yaml, Flyway migrations under db/migration/
+│   │       └── test/java/...
 │   └── card-catalog/
-├── scripts/                     # Developer utility scripts
-└── ...                          # gateway/, frontend/, additional services added in later phases
+│       └── ...
+└── ...                              # gateway/, frontend/, additional services added in later phases
 ```
 
 **CI/CD Pipeline (GitHub Actions)** — replaces the Phase 0 `ci.yml` placeholder
-- `ci.yml`: On every PR — run `go vet`, `golangci-lint`, unit tests, integration tests (with Dockerized Postgres + Redis in Phase 1; Redpanda added when Phase 2 services land), generate coverage report.
-- `lint.yml`: Enforce `gofmt`, protobuf linting, commit message format.
-- `release.yml`: On merge to `main` — build Docker images for each service, push to GitHub Container Registry, tag with commit SHA.
+- `ci.yml`: On every PR — run `mvn verify` (compiles, runs unit + integration tests via Surefire/Failsafe, runs Spotless format check), boots Dockerized Postgres + Redis via Testcontainers (Redpanda added when Phase 2 services land), generates Jacoco coverage report.
+- `lint.yml`: Enforce Spotless (Google Java Format), Checkstyle, protobuf linting, commit message format.
+- `release.yml`: On merge to `main` — build Docker images for each service (using Spring Boot's `bootBuildImage` or a multi-stage Dockerfile), push to GitHub Container Registry, tag with commit SHA.
 
 **Testing Strategy** — applies from Phase 1 onward
-- **Unit tests:** Every service has unit tests for business logic. No external dependencies — use interfaces and mocks.
-- **Integration tests:** Test gRPC endpoints with a real database (Dockerized Postgres spun up in CI). Test Kafka producers/consumers with an embedded or Dockerized Kafka.
+- **Unit tests:** Every service has unit tests for business logic. No external dependencies — use interfaces and Mockito for mocks.
+- **Integration tests:** Test gRPC endpoints with a real database via **Testcontainers** (spins up an ephemeral Postgres container per test class). Test Kafka producers/consumers with a Testcontainers Redpanda container. Files suffixed `*IT.java` (Failsafe convention) so they run separately from unit tests (`*Test.java`).
 - **End-to-end tests:** After Phase 5, test full workflows through the API Gateway.
-- **Test coverage target:** 70%+ per service. Not a vanity metric — the goal is to catch regressions as services evolve.
-- **Table-driven tests:** Follow Go convention of table-driven test cases for comprehensive input coverage.
+- **Test coverage target:** 70%+ per service, measured via Jacoco. Not a vanity metric — the goal is to catch regressions as services evolve.
+- **Parameterized tests:** Use JUnit 5 `@ParameterizedTest` with `@MethodSource` / `@CsvSource` for input-coverage cases (equivalent to Go's table-driven pattern).
 
-**Makefile (top-level)**
-```makefile
-make proto          # Regenerate Go code from .proto files
-make test           # Run all unit tests
-make test-integration  # Run integration tests (requires Docker)
-make lint           # Run linters
-make build          # Build all service binaries
-make docker-build   # Build all Docker images
-make up             # docker-compose up (full local environment)
-make down           # docker-compose down
-make migrate        # Run database migrations for all services
+**Common Maven commands**
 ```
+mvn clean install                              # Compile + run unit tests for all modules
+mvn verify                                     # Above + integration tests (Testcontainers)
+mvn -pl services/auth spring-boot:run          # Run a single service locally
+mvn -pl services/auth test                     # Run tests for one module only
+mvn spotless:apply                             # Auto-format Java code
+docker compose up                              # Bring up Postgres, Redis, all services
+docker compose down
+```
+
+> A Maven wrapper (`./mvnw`) is a TODO for a follow-up — kept out of this PR for simplicity. Until then, install Maven globally (`brew install maven`).
 
 **Additional Claude Code skills** — code-aware, deferred from Phase 0
 
 `/test` — **Test Generation Skill**
-- Reads a Go source file
-- Generates table-driven test cases covering: happy path, edge cases, error conditions
-- Creates mock implementations for interfaces
-- Outputs a `_test.go` file ready to run
+- Reads a Java source file
+- Generates JUnit 5 test cases covering: happy path, edge cases, error conditions, parameterized inputs
+- Uses Mockito for collaborator mocks at interface boundaries; Testcontainers for integration tests
+- Outputs a `*Test.java` (unit) or `*IT.java` (integration) file ready to run via `mvn test` or `mvn verify`
 
 (A `/scaffold` skill was considered but dropped — with only two services in Phase 1, codifying "service boilerplate" would encode the wrong patterns prematurely. Revisit in Phase 2+ once we have three or more services and can see what's actually repeated.)
 
 ### Deliverables
 
-**Card Catalog Service (Go + gRPC)**
-- Syncs card data from TCGdex into a local PostgreSQL table via a one-time seed script (`scripts/seed-cards.go`) run per environment. All user-facing reads go through our local Postgres + Redis — the external API is never on the request path.
+**Card Catalog Service (Java + Spring Boot + gRPC)**
+- Syncs card data from TCGdex into a local PostgreSQL table via a one-time seed CLI (`services/card-catalog/.../SeedCardsCli.java`, runnable via `mvn exec:java`) run per environment. All user-facing reads go through our local Postgres + Redis — the external API is never on the request path.
 - Normalizes cards into a canonical schema: card ID, name, set, set series, rarity, image URL, release date.
 - Redis cache layer for frequent lookups (cards don't change often — high cache hit rate).
 - gRPC endpoints:
@@ -216,7 +233,7 @@ make migrate        # Run database migrations for all services
   - `ListSets()` → all available sets
 - Re-sync (when new Pokemon sets release, ~quarterly) is deferred. Phase 1 ships the seed script only; the cron job or admin-gated `SyncCards` endpoint is tracked as a follow-up issue.
 
-**Auth Service (Go + gRPC + Self-Managed JWT)**
+**Auth Service (Java + Spring Boot + gRPC + Self-Managed JWT)**
 - Registration: email + password. Password hashed with bcrypt.
 - Login: validate credentials, issue signed JWT access token (short-lived, 15 min) + refresh token (long-lived, 7 days, stored in DB).
 - Token validation: middleware-compatible endpoint that other services call to verify JWTs.
@@ -306,11 +323,11 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 
 **Goal:** Enable vendors to upload what they have and what they want, scoped to specific events. Introduce Kafka as the event-driven communication backbone.
 
-**What you learn:** Kafka producers/consumers in Go, CSV parsing and data ingestion pipelines, event-driven architecture patterns, data validation, fuzzy matching for card resolution.
+**What you learn:** Kafka producers/consumers in Java (Spring for Apache Kafka), CSV parsing and data ingestion pipelines, event-driven architecture patterns, data validation (Bean Validation / Jakarta Validation), fuzzy matching for card resolution.
 
 ### Deliverables
 
-**Inventory Service (Go + gRPC + Kafka producer)**
+**Inventory Service (Java + Spring Boot + gRPC + Kafka producer)**
 - Vendors upload inventory via CSV or manual entry.
 - Each inventory entry references a canonical card ID from the Card Catalog Service (resolved via gRPC call).
 - Fields: card reference, quantity, condition (NM/LP/MP/HP/DMG), grading company + grade (optional), asking price, priority flag ("liquidate" / "normal").
@@ -319,7 +336,7 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 - CSV import: fuzzy-matches card_name + set_name against the Card Catalog. Unresolvable rows flagged for manual review.
 - gRPC endpoints: `AddInventory`, `BulkImportCSV`, `UpdateItem`, `RemoveItem`, `ListInventory`, `ListInventoryByEvent`, `SearchInventoryForEvent(event_id, card_id, filters)` (single-card lookup across all vendors at the event — caller must specify a card_id, no "list everything at this event" mode exists by design; returns vendor display name + booth + asking price + condition; callable by both vendors and authenticated attendees registered for the event; never exposes vendor contact info beyond display name and booth).
 
-**Buy List Service (Go + gRPC + Kafka producer)**
+**Buy List Service (Java + Spring Boot + gRPC + Kafka producer)**
 - Vendors maintain a list of cards they want to acquire.
 - Fields: card reference, minimum acceptable condition, max buy price, quantity wanted.
 - Publishes `buylist.updated` events to Kafka.
@@ -327,7 +344,7 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 
 **Asymmetric visibility — "browse demand, query supply":** The two event-scoped read endpoints are deliberately asymmetric, enforcing the product's design principle by the same name. `ListBuyListsForEvent` is a **browseable** paginated list — callers can scroll through every card vendors want at this event. `SearchInventoryForEvent` is **query-only** — callers must specify a `card_id` and only ever get inventory matches for that one card. There is no "list all inventory at this event" endpoint, by design: a browseable vendor-inventory catalog would let attendees skip the convention floor entirely, which violates the product's core thesis. Both endpoints return vendor display name + booth only — never email, phone, address, or any other contact data. Attendee identity is never exposed to other attendees on either endpoint.
 
-**Event Service (Go + gRPC + Kafka producer)**
+**Event Service (Java + Spring Boot + gRPC + Kafka producer)**
 - Organizers create events: name, location, date range, description.
 - Vendors register attendance at events.
 - Attendees register for events.
@@ -408,13 +425,13 @@ Pikachu VMAX,Vivid Voltage,LP,1,12.50,liquidate
 
 **Goal:** Build the core value proposition — automatically detect when vendor inventories overlap with other vendors' buy lists within an event context. Surface actionable opportunities.
 
-**What you learn:** Redis data structures for set operations, Kafka consumer group patterns, algorithm design for set intersection and scoring, notification system design.
+**What you learn:** Redis data structures for set operations (via Spring Data Redis), Kafka consumer group patterns, algorithm design for set intersection and scoring, notification system design.
 
 ### Deliverables
 
 **Recompute is Kafka-driven only.** Overlap recomputation is triggered exclusively by `inventory.updated`, `buylist.updated`, and `event.vendor_registered` Kafka events. The gRPC endpoint `GetOverlapsForVendor` is a pure read from precomputed Redis sets and PostgreSQL — it never triggers recomputation. This guarantees read latency stays bounded regardless of inventory size.
 
-**Overlap Detection Engine (Go + Redis + Kafka consumer)**
+**Overlap Detection Engine (Java + Spring Boot + Redis + Kafka consumer)**
 - Consumes `inventory.updated`, `buylist.updated`, and `event.vendor_registered` events from Kafka.
 - Maintains Redis data structures per event:
   - `event:{event_id}:vendor:{vendor_id}:inventory` → Set of card IDs this vendor has
@@ -438,7 +455,7 @@ Pikachu VMAX,Vivid Voltage,LP,1,12.50,liquidate
 
 When a vendor takes action on an overlap (Save to Event Plan pre-event, or Express Interest in-event), an "interest" record is created. **Interests are not locks.** Multiple vendors can register interest on the same single-copy overlap. The seller sees all interested vendors ranked by overlap score and chooses one or more to reveal booth/contact info to (see Offer Service in Phase 4 for `RevealBoothToVendor`). This mirrors the attendee offer flow — the supply-holder picks among the demand-holders, with no stale lock risk if a vendor abandons the app.
 
-**Notification Service (Go + Kafka consumer + PostgreSQL)**
+**Notification Service (Java + Spring Boot + Kafka consumer + PostgreSQL)**
 - Consumes `overlap.found` events.
 - Stores notifications per vendor in PostgreSQL.
 - Deduplicates: if the same overlap is found again (e.g., after an inventory update), update existing notification rather than creating a duplicate.
@@ -467,7 +484,7 @@ On inventory.updated or buylist.updated for vendor V at event E:
         publish overlap.found event
 ```
 
-Redis `SINTER` handles the set intersection efficiently. Scoring is computed in Go after intersection results are retrieved.
+Redis `SINTER` handles the set intersection efficiently. Scoring is computed in Java after intersection results are retrieved.
 
 ### Phase 3 Database Schemas
 
@@ -525,10 +542,10 @@ Redis `SINTER` handles the set intersection efficiently. Scoring is computed in 
 
 ### Deliverables
 
-**API Gateway (Go)**
+**API Gateway (Java + Spring Boot + Spring Cloud Gateway)**
 - Single REST entry point that translates HTTP requests to gRPC calls to backend services.
-- JWT validation middleware that calls `GetJWKS()` on the Auth Service and picks the right public key based on the token's `kid` claim.
-- Rate limiting via Redis (token bucket or sliding window).
+- JWT validation filter (Spring Security `OncePerRequestFilter` or Spring Cloud Gateway `GlobalFilter`) that calls `GetJWKS()` on the Auth Service and picks the right public key based on the token's `kid` claim.
+- Rate limiting via Redis (token bucket or sliding window — Spring Cloud Gateway has built-in `RequestRateLimiter` backed by Redis).
 - Request logging and error normalization.
 - Route structure (Phase 4 — vendor-only; attendee routes added in Phase 5):
   - `POST /api/v1/auth/register`, `/login`, `/refresh`
@@ -588,7 +605,7 @@ If those bars are not cleared, the right call is to iterate on Phase 4 (or revis
 
 The Offer Service owns attendee listings end-to-end — creation, query, expiration, identity reveal — so the `attendee_id ↔ listing_id` mapping never leaves a single service boundary. The Inventory Service is exclusively for vendor inventory and has no knowledge of attendee listings.
 
-**Offer Service (Go + gRPC + Kafka)**
+**Offer Service (Java + Spring Boot + gRPC + Kafka)**
 - Owns the `attendee_listings` schema and the full lifecycle of an anonymous listing.
 - Vendors submit interest signals or preliminary price ranges on anonymous listings.
 - Offer states: `pending` → `viewed` → `accepted` / `declined` / `expired`.
@@ -679,7 +696,7 @@ Routes added to the API Gateway in this phase:
 - Resource requests and limits for each pod.
 - Horizontal Pod Autoscaling for the Overlap Detection Engine (the most compute-variable service).
 - Centralized logging: Grafana Loki (lightweight, free, self-hosted).
-- Distributed tracing: OpenTelemetry SDK in each Go service → Jaeger backend.
+- Distributed tracing: OpenTelemetry SDK in each Java service (Spring Boot 3 has first-class Micrometer Tracing support) → Jaeger backend.
 - Health check and readiness probes on all services.
 - CI/CD extension: GitHub Actions workflow deploys to K8s on merge to main (kubectl apply or Helm upgrade).
 - Deploy target: local Kind cluster for development, small Hetzner/DigitalOcean VPS ($5–10/mo) for a live demo if desired.
@@ -731,11 +748,11 @@ Design the data model to support this from Phase 2 onward (timestamps, event sco
 
 | Phase | Focus | Key Technologies |
 |---|---|---|
-| 0 | Dev tooling, CI/CD, agentic skills | Claude Code, GitHub Actions, Make, testing frameworks |
-| 1 | Card Catalog (TCGdex seed), Auth (JWT/JWKS), foundational tooling (Makefile, docker-compose, real CI) | Go, gRPC, Protobuf, Docker, PostgreSQL, Redis, JWT/RSA |
-| 2 | Inventory, Buy Lists, Events, Kafka | Go, Kafka, CSV ingestion, event-driven architecture |
-| 3 | Overlap Detection, Notifications | Redis set operations, Kafka consumers, scoring algorithms |
-| 4 | **API Gateway + Vendor Frontend** (vendor-vendor product goes live; soft-launch validation gate) | Next.js, REST-to-gRPC, Vercel, mobile-first design |
+| 0 | Dev tooling, CI/CD, agentic skills | Claude Code, GitHub Actions, testing frameworks |
+| 1 | Card Catalog (TCGdex seed), Auth (JWT/JWKS), foundational tooling (Maven multi-module, docker-compose, real CI) | Java 21, Spring Boot, gRPC (grpc-java), Protobuf, Spring Data JDBC, Flyway, Docker, PostgreSQL, Redis, Nimbus JOSE / JWT |
+| 2 | Inventory, Buy Lists, Events, Kafka | Java, Spring for Apache Kafka, CSV ingestion, event-driven architecture |
+| 3 | Overlap Detection, Notifications | Spring Data Redis (Lettuce), set operations, Kafka consumers, scoring algorithms |
+| 4 | **API Gateway + Vendor Frontend** (vendor-vendor product goes live; soft-launch validation gate) | Spring Cloud Gateway, Next.js, REST-to-gRPC, Vercel, mobile-first design |
 | 5 | **Attendee Backend + Frontend** (anonymous listings, offers, attendee mobile flow) | Privacy patterns, state machines, data lifecycle, mobile-web |
-| 6 | Kubernetes & Observability + Organizer UX | K8s, Helm, OpenTelemetry, Jaeger, Loki, Prometheus, organizer dashboard + event creation form |
+| 6 | Kubernetes & Observability + Organizer UX | K8s, Helm, OpenTelemetry / Micrometer Tracing, Jaeger, Loki, Prometheus, organizer dashboard + event creation form |
 | 7 | Intelligence Layer | Analytics, trend detection, pricing data |
