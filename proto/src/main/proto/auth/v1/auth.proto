@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package vendex.auth.v1;
+
+option java_package = "com.vendex.auth.v1";
+option java_multiple_files = true;
+
+// AuthService owns user identity, credentials, and access tokens. It is the
+// only service that knows password material; downstream services validate
+// access tokens locally using the published JWKS (see GetJWKS).
+service AuthService {
+  // Register a new user. Returns the user_id on success.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Login validates email+password and issues a fresh access/refresh token pair.
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // RefreshToken exchanges a single-use refresh token for a new access token
+  // and a rotated refresh token. The provided refresh token is consumed
+  // atomically (compare-and-swap) so concurrent refreshes resolve to exactly
+  // one success.
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+
+  // ValidateToken is a convenience for clients that don't want to verify the
+  // JWT locally. Most callers should fetch GetJWKS once and validate offline.
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // GetJWKS returns the current set of public signing keys. Includes recently
+  // rotated keys that may have issued still-valid tokens. Clients should
+  // refresh this set on each `kid` they don't recognize.
+  rpc GetJWKS(GetJWKSRequest) returns (GetJWKSResponse);
+
+  // GetVendorProfile returns the publicly visible profile fields for a vendor.
+  rpc GetVendorProfile(GetVendorProfileRequest) returns (GetVendorProfileResponse);
+
+  // UpdateProfile updates the caller's profile fields. Only the caller can
+  // update their own profile; the access token's subject is the user_id.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_VENDOR = 1;
+  ROLE_ATTENDEE = 2;
+  ROLE_ORGANIZER = 3;
+}
+
+message VendorProfile {
+  string user_id = 1;
+  string email = 2;
+  Role role = 3;
+  string shop_name = 4;     // Empty for non-vendors
+  string city = 5;
+  string state = 6;
+  int64 created_at_epoch_seconds = 7;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  Role role = 3;
+  string shop_name = 4;     // Required when role == ROLE_VENDOR, otherwise ignored
+  string city = 5;
+  string state = 6;
+}
+
+message RegisterResponse {
+  string user_id = 1;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 access_token_expires_at_epoch_seconds = 3;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;            // Rotated; the supplied refresh token is now invalid.
+  int64 access_token_expires_at_epoch_seconds = 3;
+}
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2;
+  Role role = 3;
+  int64 expires_at_epoch_seconds = 4;
+}
+
+message GetJWKSRequest {}
+
+message Jwk {
+  string kid = 1;
+  string alg = 2;     // Always "RS256" for now
+  string kty = 3;     // Always "RSA"
+  string use = 4;     // Always "sig"
+  string n = 5;       // Base64url-encoded RSA modulus
+  string e = 6;       // Base64url-encoded RSA exponent
+}
+
+message GetJWKSResponse {
+  repeated Jwk keys = 1;
+}
+
+message GetVendorProfileRequest {
+  string user_id = 1;
+}
+
+message GetVendorProfileResponse {
+  VendorProfile profile = 1;
+}
+
+message UpdateProfileRequest {
+  string user_id = 1;
+  // Only fields the caller wants to change should be set; empty string = no
+  // change. (Phase 1 keeps this simple — a field mask would be the textbook
+  // proto-3 idiom but is overkill for three optional strings.)
+  string shop_name = 2;
+  string city = 3;
+  string state = 4;
+}
+
+message UpdateProfileResponse {
+  VendorProfile profile = 1;
+}

@@ -1,0 +1,55 @@
+name: vendex
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vendex-postgres
+    environment:
+      POSTGRES_USER: vendex
+      POSTGRES_PASSWORD: vendex
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vendex"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vendex-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: vendex-auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: vendex
+      SPRING_DATASOURCE_PASSWORD: vendex
+      AUTH_JWT_ISSUER: https://auth.vendex.local
+      AUTH_JWT_ACCESS_TOKEN_TTL: PT15M
+      AUTH_JWT_REFRESH_TOKEN_TTL: P7D
+      AUTH_CRYPTO_ENCRYPTION_KEY: ${AUTH_CRYPTO_ENCRYPTION_KEY:-bG9jYWwtZGV2LWtleS0zMi1ieXRlcy1leGFjdGx5MTIzNA==}
+      GRPC_SERVER_PORT: 9090
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

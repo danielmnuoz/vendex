@@ -1,29 +1,27 @@
-name: CI
+name: ci
 
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
 
 jobs:
   build:
-    name: Build & Test
+    name: Build & test
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
-          go-version: '1.23'
+          distribution: temurin
+          java-version: '21'
+          cache: maven
 
-      # Uncomment when services exist:
-      # - name: Vet
-      #   run: go vet ./...
-
-      # - name: Test
-      #   run: go test ./...
-
-      - name: Placeholder
-        run: echo "CI skeleton — add real steps as services are built"
+      - name: Maven verify (compile + unit + integration tests)
+        # Testcontainers spins up Postgres on-demand via the Docker socket
+        # provided by the GitHub Actions runner — no need for a `services:`
+        # block.
+        run: mvn --batch-mode --no-transfer-progress verify
