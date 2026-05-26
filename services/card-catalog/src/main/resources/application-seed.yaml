@@ -1,0 +1,13 @@
+spring:
+  # The seed CLI doesn't need Redis. Excluding the autoconfig means the JVM
+  # won't try to open a connection at startup, so the operator can run a
+  # one-off seed without running the Redis container.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+# gRPC server shouldn't bind a port for the seed CLI.
+grpc:
+  server:
+    enabled: false

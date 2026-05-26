@@ -14,6 +14,7 @@
     <modules>
         <module>proto</module>
         <module>services/auth</module>
+        <module>services/card-catalog</module>
     </modules>
 
     <properties>

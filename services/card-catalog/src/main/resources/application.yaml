@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: card-catalog
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/card_catalog_db}
+    username: ${SPRING_DATASOURCE_USERNAME:vendex}
+    password: ${SPRING_DATASOURCE_PASSWORD:vendex}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  main:
+    web-application-type: none   # No embedded servlet container; gRPC is the wire protocol.
+    banner-mode: off
+
+grpc:
+  server:
+    port: ${GRPC_SERVER_PORT:9090}
+
+card-catalog:
+  tcgdex:
+    base-url: ${CARD_CATALOG_TCGDEX_BASE_URL:https://api.tcgdex.net/v2/en}
+  cache:
+    enabled: ${CARD_CATALOG_CACHE_ENABLED:true}
+    ttl: ${CARD_CATALOG_CACHE_TTL:PT1H}          # ISO-8601 duration: 1 hour
+  search:
+    default-page-size: ${CARD_CATALOG_SEARCH_DEFAULT_PAGE_SIZE:25}
+    max-page-size: ${CARD_CATALOG_SEARCH_MAX_PAGE_SIZE:100}
+  seed:
+    max-sets: ${CARD_CATALOG_SEED_MAX_SETS:0}    # 0 = walk every set
+    dry-run: ${CARD_CATALOG_SEED_DRY_RUN:false}
+    enrich-series: ${CARD_CATALOG_SEED_ENRICH_SERIES:true}
+
+logging:
+  level:
+    com.vendex: INFO
+    org.springframework.jdbc.core: WARN
