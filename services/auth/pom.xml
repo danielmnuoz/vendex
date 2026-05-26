@@ -75,6 +75,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
@@ -82,6 +87,17 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--
+          Declared explicitly (rather than relying on the transitive pull-in
+          from spring-boot-starter-test) so maven-dependency-plugin:properties
+          can resolve ${org.mockito:mockito-core:jar} below — that goal only
+          inspects direct dependencies.
+        -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -92,6 +108,18 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!--
+                      Without a classifier, the repackage goal REPLACES the
+                      plain auth.jar with the executable BOOT-INF/ layout.
+                      That breaks the Failsafe classpath for integration tests
+                      (NoClassDefFoundError on our own classes). Using the
+                      `exec` classifier produces target/auth-exec.jar
+                      alongside the normal target/auth.jar so both ITs and
+                      Docker can find what they need.
+                    -->
+                    <classifier>exec</classifier>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -100,9 +128,41 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!--
+              Resolves ${org.mockito:mockito-core:jar} to the absolute path of
+              the mockito-core jar in the local Maven repo. Needed so Surefire
+              and Failsafe can load Mockito as a -javaagent. As of JDK 21+
+              the JVM disallows Mockito's old self-attach trick.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>resolve-mockito-agent</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>

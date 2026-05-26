@@ -18,6 +18,6 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /workspace/services/auth/target/auth.jar /app/auth.jar
+COPY --from=build /workspace/services/auth/target/auth-exec.jar /app/auth.jar
 EXPOSE 9090
 ENTRYPOINT ["java", "-jar", "/app/auth.jar"]

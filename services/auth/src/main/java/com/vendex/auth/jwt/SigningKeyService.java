@@ -144,13 +144,17 @@ public class SigningKeyService {
     private static String toPem(String label, byte[] der) {
         String base64 = Base64.getEncoder().encodeToString(der);
         StringWriter w = new StringWriter();
-        w.write("-----BEGIN ").write(label).write("-----\n");
+        w.write("-----BEGIN ");
+        w.write(label);
+        w.write("-----\n");
         // 64-char lines per RFC 7468
         for (int i = 0; i < base64.length(); i += 64) {
             w.write(base64.substring(i, Math.min(i + 64, base64.length())));
             w.write('\n');
         }
-        w.write("-----END ").write(label).write("-----\n");
+        w.write("-----END ");
+        w.write(label);
+        w.write("-----\n");
         return w.toString();
     }
 
