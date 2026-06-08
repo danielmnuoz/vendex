@@ -96,8 +96,12 @@ public class AuthService {
 
         String passwordHash = passwordEncoder.encode(password);
         Instant now = clock.instant();
+        // id is null so Spring Data JDBC treats this as a new aggregate and
+        // INSERTs it; Postgres assigns the UUID via the column's
+        // DEFAULT gen_random_uuid(), and save() reads the generated id back.
+        // (A non-null @Id would make Spring Data JDBC issue an UPDATE instead.)
         User u = new User(
-                UUID.randomUUID(),
+                null,
                 normalized,
                 passwordHash,
                 role,

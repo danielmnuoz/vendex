@@ -58,15 +58,16 @@ class RefreshTokenRepositoryIT {
 
     @Test
     void exactly_one_consumer_wins_under_concurrency() throws Exception {
-        // FK constraint requires the user to exist.
-        UUID userId = UUID.randomUUID();
-        users.save(new User(
-                userId,
-                "race-test+" + userId + "@example.com",
+        // FK constraint requires the user to exist. id is null so Spring Data
+        // JDBC INSERTs and Postgres assigns the UUID; we read it back for the FK.
+        User saved = users.save(new User(
+                null,
+                "race-test+" + UUID.randomUUID() + "@example.com",
                 "placeholder-hash",
                 Role.VENDOR, "Shop", "City", "ST",
                 Instant.now(), Instant.now()
         ));
+        UUID userId = saved.id();
 
         String hash = "race-token-hash";
         Instant expires = Instant.now().plus(7, ChronoUnit.DAYS);

@@ -45,7 +45,9 @@ services:
       AUTH_JWT_ISSUER: https://auth.vendex.local
       AUTH_JWT_ACCESS_TOKEN_TTL: PT15M
       AUTH_JWT_REFRESH_TOKEN_TTL: P7D
-      AUTH_CRYPTO_ENCRYPTION_KEY: ${AUTH_CRYPTO_ENCRYPTION_KEY:-bG9jYWwtZGV2LWtleS0zMi1ieXRlcy1leGFjdGx5MTIzNA==}
+      # Local-dev only. Decodes to exactly 32 bytes (AES-256). Override in any
+      # real environment. Generate a fresh one with: openssl rand -base64 32
+      AUTH_CRYPTO_ENCRYPTION_KEY: ${AUTH_CRYPTO_ENCRYPTION_KEY:-V3wOAnq3+Jus93WFJbWJD6ZKmzCssr2xYMi/aVfxZD8=}
       GRPC_SERVER_PORT: 9090
     ports:
       - "9090:9090"
