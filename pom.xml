@@ -13,6 +13,7 @@
 
     <modules>
         <module>proto</module>
+        <module>events</module>
         <module>services/auth</module>
         <module>services/card-catalog</module>
     </modules>
@@ -118,6 +119,11 @@
             <dependency>
                 <groupId>com.vendex</groupId>
                 <artifactId>proto</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.vendex</groupId>
+                <artifactId>events</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: vendex
       POSTGRES_PASSWORD: vendex
-      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db
     ports:
       - "5432:5432"
     volumes:
@@ -29,6 +29,47 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Redpanda: a single-binary, Kafka-API-compatible broker (no ZooKeeper).
+  # Two listeners: `internal` for in-network services (redpanda:9092) and
+  # `external` for clients on the host (localhost:19092). Phase 2 services
+  # connect over the internal listener; you'd point a local IDE or `rpk` at
+  # the external one.
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    container_name: vendex-redpanda
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"   # Kafka API (host access)
+      - "9644:9644"     # Admin API / metrics
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Web UI for browsing topics and inspecting the JSON event payloads our
+  # services publish. Handy while building Phase 2 producers; not required
+  # by any service. Visit http://localhost:8080.
+  redpanda-console:
+    image: redpandadata/console:v2.7.2
+    container_name: vendex-redpanda-console
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
 
   auth:
     build:

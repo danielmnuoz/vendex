@@ -344,6 +344,8 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 
 **Asymmetric visibility — "browse demand, query supply":** The two event-scoped read endpoints are deliberately asymmetric, enforcing the product's design principle by the same name. `ListBuyListsForEvent` is a **browseable** paginated list — callers can scroll through every card vendors want at this event. `SearchInventoryForEvent` is **query-only** — callers must specify a `card_id` and only ever get inventory matches for that one card. There is no "list all inventory at this event" endpoint, by design: a browseable vendor-inventory catalog would let attendees skip the convention floor entirely, which violates the product's core thesis. Both endpoints return vendor display name + booth only — never email, phone, address, or any other contact data. Attendee identity is never exposed to other attendees on either endpoint.
 
+> **Phase 2 scope note:** display name and booth live in the Auth Service (vendor profile) and the Event Service (`event_registrations.booth`), not in the Inventory/Buy List services. To avoid making these read endpoints depend on Auth + Event at query time, Phase 2 returns the `vendor_id` plus the business data the service owns (price, condition, quantity); decorating results with display name + booth is deferred to the **Phase 4 API Gateway**, which fans out to Auth/Event. There is no consumer of these endpoints until the gateway lands anyway. Likewise, per-request authz (the "callable by authenticated attendees registered for the event" rule) is enforced at the gateway in Phase 4 — Phase 2 services trust the caller-supplied context.
+
 **Event Service (Java + Spring Boot + gRPC + Kafka producer)**
 - Organizers create events: name, location, date range, description.
 - Vendors register attendance at events.
@@ -355,9 +357,39 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 ```
 inventory.updated     → { vendor_id, event_id, card_id, action: "added"|"removed"|"updated", timestamp }
 buylist.updated       → { vendor_id, card_id, action: "added"|"removed"|"updated", timestamp }
-event.created         → { event_id, organizer_id, name, dates, location, timestamp }
+event.created         → { event_id, organizer_id, name, city, state, start_date, end_date, timestamp }
 event.vendor_registered → { event_id, vendor_id, timestamp }
 ```
+Payloads are JSON. Contracts (the record classes + topic-name constants) live in a
+shared `events/` Maven module that both Phase 2 producers and the Phase 3 consumers
+compile against. Messages are keyed by `vendor_id` (natural aggregate root) and use a
+single partition locally; an `event_id`-keyed scheme is the upgrade path when the
+event-centric Phase 3 consumer scales out.
+
+**Transactional outbox (how events get published).** Producers do **not** publish to
+Kafka directly inside their request path — that would reintroduce the dual-write
+problem (DB commit succeeds, broker publish fails, or vice versa). Instead, each
+producing service writes the event to an `outbox` table **in the same database
+transaction as the business write**, so the two commit or roll back atomically. A
+polling relay (`@Scheduled`) then drains unpublished rows to Kafka and stamps them
+published. Delivery is **at-least-once** — consumers must be idempotent (a Phase 3
+concern). The outbox table, writer, and relay are implemented once in the shared
+`events/` module and auto-configured into any service that depends on it; the table
+DDL ships as a shared Flyway migration (`classpath:db/outbox`, version-namespaced at
+`V1000` to avoid colliding with per-service migrations). The "real CDC" alternative
+(Debezium tailing the WAL) is noted as a future upgrade, not used at this scale.
+
+**outbox** (one per producing service DB: `inventory_db`, `buylist_db`, `event_db`)
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | Primary key |
+| aggregate_type | VARCHAR | Logical entity type (audit/debug) |
+| aggregate_id | VARCHAR | Entity id (audit/debug) |
+| topic | VARCHAR | Kafka topic |
+| partition_key | VARCHAR | Kafka message key (nullable) |
+| payload | JSONB | JSON event body, published verbatim |
+| created_at | TIMESTAMPTZ | |
+| published_at | TIMESTAMPTZ | Nullable — null until the relay ships it |
 
 **CSV Import Format**
 ```
@@ -417,6 +449,7 @@ Pikachu VMAX,Vivid Voltage,LP,1,12.50,liquidate
 | event_id | UUID | FK to events |
 | user_id | UUID | Vendor or attendee |
 | role | VARCHAR | vendor / attendee |
+| booth | VARCHAR | Nullable — vendor's booth at this event (e.g. "B-7"). Booth is per-vendor-per-event, so this registration row is its only home. |
 | registered_at | TIMESTAMP | |
 
 ---
