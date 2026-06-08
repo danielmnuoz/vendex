@@ -1,0 +1,243 @@
+<!--
+  Template for /learn multi-concept walkthroughs (HTML mode).
+
+  How to use:
+    1. Copy this file to docs/learning/<slug>.html
+    2. Replace each <!-- FILL: ... --> marker with real content
+    3. Add or remove H2 sections as needed for the topic
+    4. Reference example: docs/learning/phase1-explainer.html
+
+  Voice rules live in .claude/skills/learn/SKILL.md — read those first.
+  The CSS below is the canonical look; don't restyle without reason.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><!-- FILL: title --></title>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --text: #2c2c2c;
+      --muted: #6b6b6b;
+      --accent: #c96442;
+      --border: #e8e6dd;
+      --code-bg: #f3f1e9;
+      --callout-analogy: #f5efde;
+      --callout-why: #ecf0eb;
+      --callout-warn: #fbe9e0;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      padding: 48px 24px 120px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+      font-size: 17px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    main { max-width: 760px; margin: 0 auto; }
+
+    h1, h2, h3, h4 {
+      font-family: "Iowan Old Style", "Georgia", "Charter", serif;
+      font-weight: 600;
+      line-height: 1.25;
+      color: #1a1a1a;
+    }
+
+    h1 { font-size: 38px; margin: 0 0 8px; }
+    h2 {
+      font-size: 28px;
+      margin: 64px 0 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    h3 { font-size: 22px; margin: 40px 0 12px; }
+    h4 { font-size: 18px; margin: 28px 0 8px; }
+
+    p { margin: 0 0 16px; }
+
+    .lede {
+      font-size: 19px;
+      color: var(--muted);
+      margin: 0 0 32px;
+    }
+
+    .meta {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 48px;
+    }
+
+    a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    a:hover { text-decoration-thickness: 2px; }
+
+    code {
+      font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.55;
+      margin: 16px 0 24px;
+    }
+    pre code { background: transparent; padding: 0; font-size: inherit; }
+
+    .callout {
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 24px 0;
+      font-size: 16px;
+    }
+    .callout p:last-child { margin-bottom: 0; }
+    .callout .label {
+      display: inline-block;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b6b6b;
+      margin-bottom: 8px;
+    }
+
+    .callout.analogy { background: var(--callout-analogy); }
+    .callout.why     { background: var(--callout-why); }
+    .callout.warn    { background: var(--callout-warn); }
+
+    ul, ol { margin: 0 0 16px; padding-left: 24px; }
+    li { margin-bottom: 6px; }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 32px 0 48px;
+    }
+    .toc h3 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .toc ol { margin: 0; padding-left: 20px; }
+    .toc ol ol { margin-top: 6px; }
+    .toc a { color: var(--text); text-decoration: none; }
+    .toc a:hover { color: var(--accent); }
+
+    .term { font-weight: 700; color: #1a1a1a; }
+    .small { font-size: 14px; color: var(--muted); }
+
+    .footer {
+      margin-top: 96px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 24px; font-size: 15px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    th { font-weight: 600; color: #1a1a1a; }
+  </style>
+</head>
+<body>
+<main>
+
+<h1><!-- FILL: title --></h1>
+<p class="lede"><!-- FILL: one-sentence lede explaining what this doc covers --></p>
+<div class="meta"><!-- FILL: short meta line. Default: "Written for the VenDex repo owner. Save or delete this file when you're done with it — it lives in docs/learning/ but isn't committed." --></div>
+
+<div class="toc">
+  <h3>What's in here</h3>
+  <ol>
+    <!-- FILL: one <li><a href="#anchor">Section name</a></li> per H2 below.
+         Nested <ol> for H3 subsections of long top-level sections. -->
+  </ol>
+</div>
+
+<!-- ============================================ -->
+<!-- One H2 section per major concept. Use the patterns below as needed.
+     Drop sections that don't fit, add more for additional concepts. -->
+
+<h2 id="big-picture">1. Big picture</h2>
+<!-- FILL: 2-3 paragraphs answering "what is this doc explaining and why does it matter to me right now?"
+     Bridge from the user's .NET / monolith background. -->
+
+<div class="callout why">
+<div class="label">Why this matters</div>
+<p><!-- FILL: the one-line stake for the reader. Optional — only include if the stake isn't obvious from the prose. --></p>
+</div>
+
+
+<h2 id="section-2"><!-- FILL: section title --></h2>
+<!-- FILL: section content. Lead with the .NET bridge if relevant. -->
+
+<pre><code><!-- FILL: real code from the repo, with annotations as needed --></code></pre>
+
+<div class="callout analogy">
+<div class="label">Analogy</div>
+<p><!-- FILL: concrete real-world analogy (post office, wax seal, restaurant kitchen, etc.) --></p>
+</div>
+
+
+<!-- Add more H2 sections following the same pattern.
+     Common callout types:
+       <div class="callout analogy"> ... </div>   — non-tech analogy
+       <div class="callout why">     ... </div>   — why-this-matters / stakes
+       <div class="callout warn">    ... </div>   — gotcha / caveat / trade-off
+     Inline emphasis: <span class="term">key term</span>
+     Inline code: <code>identifier</code>
+     Block code: <pre><code>...</code></pre>
+-->
+
+
+<!-- ============================================ -->
+<h2 id="qa">N. Follow-up Q&A</h2>
+
+<p>Direct answers to questions a reader is likely to have after the sections above.</p>
+
+<h3><!-- FILL: question 1, phrased as the reader would ask it --></h3>
+<!-- FILL: answer. Be direct. Use code or tables where they clarify. -->
+
+
+<h3><!-- FILL: question 2 --></h3>
+<!-- FILL: answer -->
+
+
+<!-- Add 3-8 more Q&A entries. Skip the whole section only if no obvious
+     follow-ups exist — but a multi-concept walkthrough almost always has some. -->
+
+
+<div class="footer">
+  <p><strong>Files referenced in this explainer</strong>: <!-- FILL: comma-separated list of file paths --></p>
+  <p>Authoritative docs in the repo: <code>product-spec.md</code>, <code>technical-spec.md</code>, <code>CLAUDE.md</code>.</p>
+  <p><!-- FILL: optional — links to related issues, PRs, prior /learn artifacts --></p>
+</div>
+
+</main>
+</body>
+</html>
