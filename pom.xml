@@ -21,6 +21,11 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.release>21</maven.compiler.release>
+        <!-- Retain method parameter names in bytecode. Required for Spring Data
+             @Query named parameters (e.g. :email) and Spring's constructor
+             binding to resolve without @Param. spring-boot-starter-parent sets
+             this by default; we use a custom parent, so set it explicitly. -->
+        <maven.compiler.parameters>true</maven.compiler.parameters>
 
         <spring-boot.version>3.4.1</spring-boot.version>
         <grpc.version>1.68.1</grpc.version>
