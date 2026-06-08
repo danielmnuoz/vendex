@@ -104,17 +104,15 @@ class RedisCardCacheIT {
     @Import({org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration.class,
              org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration.class})
     static class TestApp {
+        // No stringRedisTemplate bean here — RedisAutoConfiguration already
+        // provides one (the test autowires it). Declaring our own collides with
+        // it, and bean overriding is disabled by default.
         @org.springframework.context.annotation.Bean
         RedisCardCache redisCardCache(RedisConnectionFactory factory) {
             return new RedisCardCache(
                     new StringRedisTemplate(factory),
                     new ObjectMapper().registerModule(new JavaTimeModule()),
                     Duration.ofMinutes(5));
-        }
-
-        @org.springframework.context.annotation.Bean
-        StringRedisTemplate stringRedisTemplate(RedisConnectionFactory factory) {
-            return new StringRedisTemplate(factory);
         }
     }
 }

@@ -13,8 +13,10 @@ import com.vendex.cards.v1.SearchCardsResponse;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -51,6 +53,17 @@ class CardCatalogApplicationIT {
 
     @Autowired
     CardRepository cards;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    @BeforeEach
+    void clean() {
+        // The @Container Postgres is shared across every test method in this
+        // class, so wipe the table between tests — otherwise rows from one test
+        // leak into count-sensitive assertions in another (e.g. listSets).
+        jdbc.execute("TRUNCATE TABLE cards");
+    }
 
     @Test
     void searchCardsReturnsTrigramRankedResults() {
