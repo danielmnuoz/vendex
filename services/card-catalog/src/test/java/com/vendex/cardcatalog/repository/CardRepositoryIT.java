@@ -147,6 +147,16 @@ class CardRepositoryIT {
         assertThat(got).isEmpty();
     }
 
+    @Test
+    void findsCanonicalCardByInternalUuid() {
+        Card stored = repo.upsert(seedFor("a", "Pikachu"));
+
+        assertThat(repo.findById(stored.id())).contains(stored);
+        assertThat(repo.findByIds(List.of(stored.id())))
+                .extracting(Card::id)
+                .containsExactly(stored.id());
+    }
+
     private static CardSeed seedFor(String externalId, String name) {
         return seedForSet(externalId, name, "sv03");
     }

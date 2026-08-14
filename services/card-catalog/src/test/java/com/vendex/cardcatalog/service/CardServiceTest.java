@@ -77,6 +77,18 @@ class CardServiceTest {
         }
 
         @Test
+        void canonicalUuidLoadsByInternalId() {
+            Card card = sample("sv03-002");
+            when(repo.findById(card.id())).thenReturn(Optional.of(card));
+
+            Card got = service.getById(card.id().toString());
+
+            assertThat(got).isEqualTo(card);
+            verify(repo).findById(card.id());
+            verify(repo, never()).findByExternalId(anyString());
+        }
+
+        @Test
         void notFoundThrowsCardNotFound() {
             when(repo.findByExternalId("missing")).thenReturn(Optional.empty());
             assertThatThrownBy(() -> service.getById("missing"))
@@ -122,6 +134,18 @@ class CardServiceTest {
             when(repo.findByExternalIds(List.of("a"))).thenReturn(List.of(a));
             List<Card> got = service.getByIds(List.of("b", "a"));
             assertThat(got).extracting(Card::externalId).containsExactly("b", "a");
+        }
+
+        @Test
+        void mixesCanonicalAndExternalIdsInRequestOrder() {
+            Card canonical = sample("sv03-001");
+            Card external = sample("sv03-002");
+            when(repo.findByIds(List.of(canonical.id()))).thenReturn(List.of(canonical));
+            when(repo.findByExternalIds(List.of("sv03-002"))).thenReturn(List.of(external));
+
+            List<Card> got = service.getByIds(List.of(canonical.id().toString(), "sv03-002"));
+
+            assertThat(got).containsExactly(canonical, external);
         }
 
         @Test

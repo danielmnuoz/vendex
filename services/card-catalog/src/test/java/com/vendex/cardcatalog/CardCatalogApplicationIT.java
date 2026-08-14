@@ -92,6 +92,18 @@ class CardCatalogApplicationIT {
     }
 
     @Test
+    void getCardByIdAcceptsCanonicalInternalUuid() {
+        var stored = cards.upsert(new CardSeed("sv03-101", "Charizard ex", "sv03", "Obsidian",
+                null, "Ultra Rare", null, null, null));
+
+        GetCardByIdResponse response = invoke(obs -> grpc.getCardById(
+                GetCardByIdRequest.newBuilder().setCardId(stored.id().toString()).build(), obs));
+
+        assertThat(response.getCard().getId()).isEqualTo(stored.id().toString());
+        assertThat(response.getCard().getExternalId()).isEqualTo("sv03-101");
+    }
+
+    @Test
     void getCardByIdMissingMapsToNotFound() {
         StatusRuntimeException err = CardCatalogApplicationIT.<GetCardByIdResponse>invokeError(
                 obs -> grpc.getCardById(GetCardByIdRequest.newBuilder().setCardId("does-not-exist").build(), obs));
