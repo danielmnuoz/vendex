@@ -10,6 +10,7 @@ COPY services/auth/pom.xml services/auth/pom.xml
 COPY services/card-catalog/pom.xml services/card-catalog/pom.xml
 COPY services/event/pom.xml services/event/pom.xml
 COPY services/inventory/pom.xml services/inventory/pom.xml
+COPY services/buylist/pom.xml services/buylist/pom.xml
 RUN --mount=type=cache,target=/root/.m2 \
     apt-get update && apt-get install -y --no-install-recommends maven && \
     mvn -B -pl services/card-catalog -am dependency:go-offline -DskipTests || true

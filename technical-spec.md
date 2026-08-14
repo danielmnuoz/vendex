@@ -339,14 +339,16 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 - gRPC endpoints: `AddInventory`, `BulkImportCSV`, `UpdateItem`, `RemoveItem`, `ListInventory`, `ListInventoryByEvent`, `SearchInventoryForEvent`. Phase 2 returns vendor ID, asking price, condition, and quantity; display-name/booth decoration and caller authorization belong to the Phase 4 gateway as described below.
 
 **Buy List Service (Java + Spring Boot + gRPC + Kafka producer)**
-- Vendors maintain a list of cards they want to acquire.
+- Vendors maintain a persistent list of cards they want to acquire. One canonical card may appear once per vendor; changing price, condition, or quantity updates that row.
 - Fields: card reference, minimum acceptable condition, max buy price, quantity wanted.
 - Publishes `buylist.updated` events to Kafka.
-- gRPC endpoints: `AddWantedCard`, `RemoveWantedCard`, `UpdateWantedCard`, `ListBuyList`, `ListBuyListsForEvent(event_id, filters)` (paginated card-level view across all vendors at the event, callable by both vendors and authenticated attendees registered for the event; returns vendor display name + booth + max-buy price + minimum acceptable condition; never exposes vendor contact info beyond display name and booth).
+- Canonical card UUIDs are validated against Card Catalog before insertion and whenever a card-filtered event browse is requested.
+- Consumes `event.vendor_registered` and vendor `event.participant_unregistered` facts into an idempotent local roster projection. Timestamp conflict handling ignores older facts, and removal wins equal-timestamp ties. This makes `ListBuyListsForEvent` a local database read without coupling it synchronously to Event Service.
+- gRPC endpoints: `AddWantedCard`, `RemoveWantedCard`, `UpdateWantedCard`, `ListBuyList`, `ListBuyListsForEvent(event_id, filters)`. The event view is intentionally browseable and supports optional card, minimum-condition, and minimum max-buy-price filters. Phase 2 returns vendor ID and buy-list fields; the Phase 4 gateway adds display name, booth, and caller authorization.
 
-**Asymmetric visibility — "browse demand, query supply":** The two event-scoped read endpoints are deliberately asymmetric, enforcing the product's design principle by the same name. `ListBuyListsForEvent` is a **browseable** paginated list — callers can scroll through every card vendors want at this event. `SearchInventoryForEvent` is **query-only** — callers must specify a `card_id` and only ever get inventory matches for that one card. There is no "list all inventory at this event" endpoint, by design: a browseable vendor-inventory catalog would let attendees skip the convention floor entirely, which violates the product's core thesis. Both endpoints return vendor display name + booth only — never email, phone, address, or any other contact data. Attendee identity is never exposed to other attendees on either endpoint.
+**Asymmetric visibility — "browse demand, query supply":** The two event-scoped read endpoints are deliberately asymmetric, enforcing the product's design principle by the same name. `ListBuyListsForEvent` is a **browseable** paginated list — callers can scroll through every card vendors want at this event. `SearchInventoryForEvent` is **query-only** — callers must specify a `card_id` and only ever get inventory matches for that one card. There is no "list all inventory at this event" endpoint, by design: a browseable vendor-inventory catalog would let attendees skip the convention floor entirely, which violates the product's core thesis. The eventual gateway responses add vendor display name + booth only — never email, phone, address, or any other contact data. Phase 2 service responses contain `vendor_id` as detailed below. Attendee identity is never exposed to other attendees on either endpoint.
 
-> **Phase 2 scope note:** display name and booth live in the Auth Service (vendor profile) and the Event Service (`event_registrations.booth`), not in the Inventory/Buy List services. To avoid making these read endpoints depend on Auth + Event at query time, Phase 2 returns the `vendor_id` plus the business data the service owns (price, condition, quantity); decorating results with display name + booth is deferred to the **Phase 4 API Gateway**, which fans out to Auth/Event. There is no consumer of these endpoints until the gateway lands anyway. Likewise, per-request authz (the "callable by authenticated attendees registered for the event" rule) is enforced at the gateway in Phase 4 — Phase 2 services trust the caller-supplied context.
+> **Phase 2 scope note:** display name and booth live in the Auth Service (vendor profile) and the Event Service (`event_registrations.booth`), not in the Inventory/Buy List services. To avoid making these read endpoints depend on Auth + Event at query time, Phase 2 returns the `vendor_id` plus the business data the service owns (price, condition, quantity); Buy List's event membership comes from its asynchronous roster projection. Decorating results with display name + booth is deferred to the **Phase 4 API Gateway**, which fans out to Auth/Event. There is no consumer of these endpoints until the gateway lands anyway. Likewise, per-request authz (the "callable by authenticated attendees registered for the event" rule) is enforced at the gateway in Phase 4 — Phase 2 services trust the caller-supplied context.
 
 **Event Service (Java + Spring Boot + gRPC + Kafka producer)**
 - Organizers create events: name, location, date range, description.
@@ -427,17 +429,28 @@ ambiguous rows and includes up to three ranked card candidates for manual review
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
 
+**buylist_db.event_vendor_roster** (local projection from Event Service facts)
+| Column | Type | Notes |
+|---|---|---|
+| event_id | UUID | Composite primary key |
+| vendor_id | UUID | Composite primary key |
+| active | BOOLEAN | False rows are retained as tombstones |
+| occurred_at | TIMESTAMPTZ | Rejects older out-of-order facts; removal wins timestamp ties |
+
 **buylist_db.wanted_cards**
 | Column | Type | Notes |
 |---|---|---|
 | id | UUID | Primary key |
 | vendor_id | UUID | Owner |
 | card_id | UUID | FK to card catalog (logical) |
-| min_condition | VARCHAR | Minimum acceptable |
-| max_price | DECIMAL | Maximum buy price |
+| minimum_condition | VARCHAR | Minimum acceptable |
+| max_buy_price | DECIMAL | Maximum buy price |
 | quantity_wanted | INT | |
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
+
+Unique constraint: `(vendor_id, card_id)` — one mutable demand row per canonical
+card on each vendor's persistent buy list.
 
 **event_db.events**
 | Column | Type | Notes |
