@@ -115,5 +115,25 @@ services:
       - "9091:9090"
     restart: unless-stopped
 
+  event:
+    build:
+      context: .
+      dockerfile: services/event/Dockerfile
+    container_name: vendex-event
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/event_db
+      SPRING_DATASOURCE_USERNAME: vendex
+      SPRING_DATASOURCE_PASSWORD: vendex
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      GRPC_SERVER_PORT: 9090
+    ports:
+      - "9092:9090"
+    restart: unless-stopped
+
 volumes:
   postgres-data:

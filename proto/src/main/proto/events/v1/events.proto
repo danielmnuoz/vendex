@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package vendex.events.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vendex.event.v1";
+option java_outer_classname = "EventsProto";
+
+service EventService {
+  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
+  rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse);
+  rpc RegisterForEvent(RegisterForEventRequest) returns (RegisterForEventResponse);
+  rpc UnregisterFromEvent(UnregisterFromEventRequest) returns (UnregisterFromEventResponse);
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+  rpc GetEventVendors(GetEventVendorsRequest) returns (GetEventRegistrationsResponse);
+  rpc GetEventAttendees(GetEventAttendeesRequest) returns (GetEventRegistrationsResponse);
+}
+
+enum RegistrationRole {
+  REGISTRATION_ROLE_UNSPECIFIED = 0;
+  REGISTRATION_ROLE_VENDOR = 1;
+  REGISTRATION_ROLE_ATTENDEE = 2;
+}
+
+message Event {
+  string id = 1;
+  string organizer_id = 2;
+  string name = 3;
+  string city = 4;
+  string state = 5;
+  string venue = 6;
+  string start_date = 7;
+  string end_date = 8;
+  string description = 9;
+  int64 created_at_epoch_seconds = 10;
+  int64 updated_at_epoch_seconds = 11;
+}
+
+message EventRegistration {
+  string id = 1;
+  string event_id = 2;
+  string user_id = 3;
+  RegistrationRole role = 4;
+  string booth = 5;
+  int64 registered_at_epoch_seconds = 6;
+}
+
+message CreateEventRequest {
+  string organizer_id = 1;
+  string name = 2;
+  string city = 3;
+  string state = 4;
+  string venue = 5;
+  string start_date = 6;
+  string end_date = 7;
+  string description = 8;
+}
+
+message CreateEventResponse { Event event = 1; }
+
+message UpdateEventRequest {
+  string event_id = 1;
+  string organizer_id = 2;
+  string name = 3;
+  string city = 4;
+  string state = 5;
+  string venue = 6;
+  string start_date = 7;
+  string end_date = 8;
+  string description = 9;
+}
+
+message UpdateEventResponse { Event event = 1; }
+
+message RegisterForEventRequest {
+  string event_id = 1;
+  string user_id = 2;
+  RegistrationRole role = 3;
+  string booth = 4;
+}
+
+message RegisterForEventResponse { EventRegistration registration = 1; }
+
+message UnregisterFromEventRequest {
+  string event_id = 1;
+  string user_id = 2;
+}
+
+message UnregisterFromEventResponse {}
+
+message ListEventsRequest {
+  int32 page_size = 1;
+  int32 page_offset = 2;
+}
+
+message ListEventsResponse {
+  repeated Event events = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}
+
+message GetEventRequest { string event_id = 1; }
+message GetEventResponse { Event event = 1; }
+message GetEventVendorsRequest { string event_id = 1; }
+message GetEventAttendeesRequest { string event_id = 1; }
+message GetEventRegistrationsResponse { repeated EventRegistration registrations = 1; }

@@ -350,7 +350,8 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 - Organizers create events: name, location, date range, description.
 - Vendors register attendance at events.
 - Attendees register for events.
-- Publishes `event.created`, `event.vendor_registered`, `event.attendee_registered` to Kafka.
+- Publishes `event.created`, `event.updated`, `event.vendor_registered`,
+  `event.attendee_registered`, and `event.participant_unregistered` to Kafka.
 - gRPC endpoints: `CreateEvent`, `UpdateEvent`, `RegisterForEvent`, `UnregisterFromEvent`, `ListEvents`, `GetEvent`, `GetEventVendors`, `GetEventAttendees`.
 
 **Kafka Topics & Event Schemas**
@@ -358,13 +359,17 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 inventory.updated     → { vendor_id, event_id, card_id, action: "added"|"removed"|"updated", timestamp }
 buylist.updated       → { vendor_id, card_id, action: "added"|"removed"|"updated", timestamp }
 event.created         → { event_id, organizer_id, name, city, state, start_date, end_date, timestamp }
+event.updated         → { event_id, organizer_id, name, city, state, start_date, end_date, timestamp }
 event.vendor_registered → { event_id, vendor_id, timestamp }
+event.attendee_registered → { event_id, attendee_id, timestamp }
+event.participant_unregistered → { event_id, user_id, role: "vendor"|"attendee", timestamp }
 ```
 Payloads are JSON. Contracts (the record classes + topic-name constants) live in a
 shared `events/` Maven module that both Phase 2 producers and the Phase 3 consumers
-compile against. Messages are keyed by `vendor_id` (natural aggregate root) and use a
-single partition locally; an `event_id`-keyed scheme is the upgrade path when the
-event-centric Phase 3 consumer scales out.
+compile against. Keys preserve ordering for the entity being changed: inventory and
+buy-list messages use `vendor_id`, event metadata uses `event_id`, and roster changes
+use the participant's user ID. Local development uses a single partition; additional
+partitions can be introduced without changing those ordering boundaries.
 
 **Transactional outbox (how events get published).** Producers do **not** publish to
 Kafka directly inside their request path — that would reintroduce the dual-write
@@ -441,6 +446,7 @@ Pikachu VMAX,Vivid Voltage,LP,1,12.50,liquidate
 | end_date | DATE | |
 | description | TEXT | |
 | created_at | TIMESTAMP | |
+| updated_at | TIMESTAMP | |
 
 **event_db.event_registrations**
 | Column | Type | Notes |

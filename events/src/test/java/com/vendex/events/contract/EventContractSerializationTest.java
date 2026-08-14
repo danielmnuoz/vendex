@@ -79,4 +79,30 @@ class EventContractSerializationTest {
                 .contains("\"end_date\":\"2026-07-19\"")
                 .contains("\"organizer_id\":");
     }
+
+    @Test
+    void attendeeRegistrationUsesAttendeeIdOnWire() throws Exception {
+        var event = new EventAttendeeRegistered(
+                UUID.randomUUID(), UUID.randomUUID(), Instant.parse("2026-06-08T12:00:00Z"));
+
+        String json = mapper.writeValueAsString(event);
+
+        assertThat(json)
+                .contains("\"event_id\":")
+                .contains("\"attendee_id\":")
+                .doesNotContain("vendor_id");
+    }
+
+    @Test
+    void participantUnregisteredSerializesRoleLowercase() throws Exception {
+        var event = new EventParticipantUnregistered(
+                UUID.randomUUID(), UUID.randomUUID(), ParticipantRole.VENDOR,
+                Instant.parse("2026-06-08T12:00:00Z"));
+
+        String json = mapper.writeValueAsString(event);
+
+        assertThat(json)
+                .contains("\"user_id\":")
+                .contains("\"role\":\"vendor\"");
+    }
 }
