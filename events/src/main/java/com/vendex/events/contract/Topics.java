@@ -11,5 +11,8 @@ public final class Topics {
     public static final String INVENTORY_UPDATED = "inventory.updated";
     public static final String BUYLIST_UPDATED = "buylist.updated";
     public static final String EVENT_CREATED = "event.created";
+    public static final String EVENT_UPDATED = "event.updated";
     public static final String EVENT_VENDOR_REGISTERED = "event.vendor_registered";
+    public static final String EVENT_ATTENDEE_REGISTERED = "event.attendee_registered";
+    public static final String EVENT_PARTICIPANT_UNREGISTERED = "event.participant_unregistered";
 }

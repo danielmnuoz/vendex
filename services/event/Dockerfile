@@ -1,8 +1,6 @@
-# Multi-stage: build the fat jar with Maven, then run it on a slim JRE image.
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 
-# Resolve dependencies first so they cache across source-only changes.
 COPY pom.xml .
 COPY proto/pom.xml proto/pom.xml
 COPY events/pom.xml events/pom.xml
@@ -11,16 +9,16 @@ COPY services/card-catalog/pom.xml services/card-catalog/pom.xml
 COPY services/event/pom.xml services/event/pom.xml
 RUN --mount=type=cache,target=/root/.m2 \
     apt-get update && apt-get install -y --no-install-recommends maven && \
-    mvn -B -pl services/auth -am dependency:go-offline -DskipTests || true
+    mvn -B -pl services/event -am dependency:go-offline -DskipTests || true
 
-# Build.
 COPY proto/src proto/src
-COPY services/auth/src services/auth/src
+COPY events/src events/src
+COPY services/event/src services/event/src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -pl services/auth -am package -DskipTests
+    mvn -B -pl services/event -am package -DskipTests
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /workspace/services/auth/target/auth-exec.jar /app/auth.jar
+COPY --from=build /workspace/services/event/target/event-exec.jar /app/event.jar
 EXPOSE 9090
-ENTRYPOINT ["java", "-jar", "/app/auth.jar"]
+ENTRYPOINT ["java", "-jar", "/app/event.jar"]
