@@ -333,8 +333,10 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 - Fields: card reference, quantity, condition (NM/LP/MP/HP/DMG), grading company + grade (optional), asking price, priority flag ("liquidate" / "normal").
 - Inventory can be scoped to a specific event or marked as always-available.
 - Publishes `inventory.updated` events to Kafka on every change.
-- CSV import: fuzzy-matches card_name + set_name against the Card Catalog. Unresolvable rows flagged for manual review.
-- gRPC endpoints: `AddInventory`, `BulkImportCSV`, `UpdateItem`, `RemoveItem`, `ListInventory`, `ListInventoryByEvent`, `SearchInventoryForEvent(event_id, card_id, filters)` (single-card lookup across all vendors at the event — caller must specify a card_id, no "list everything at this event" mode exists by design; returns vendor display name + booth + asking price + condition; callable by both vendors and authenticated attendees registered for the event; never exposes vendor contact info beyond display name and booth).
+- CSV import is a preview/commit pipeline: parse and validate the full file, fuzzy-match `card_name + set_name` against the Card Catalog, return confidence-ranked candidates for unresolvable/ambiguous rows, then atomically commit the auto-resolved rows when `dry_run=false`. The parser accepts quoted fields, optional grading columns, and either `price` or `asking_price`, with configurable row and byte limits.
+- Manual entry and event search accept only the Card Catalog's canonical UUID. The Inventory Service validates that UUID over gRPC before writing or searching. The Card Catalog retains external-ID lookup as compatibility behavior for older clients, but its advertised service-to-service identity is the canonical UUID.
+- `ListInventoryByEvent` returns the vendor's event-scoped rows plus their always-available rows. `SearchInventoryForEvent(event_id, card_id, filters)` is a single-card lookup across all vendors at the event and also includes always-available supply; the caller must specify a `card_id`, and no "list everything at this event" mode exists by design.
+- gRPC endpoints: `AddInventory`, `BulkImportCSV`, `UpdateItem`, `RemoveItem`, `ListInventory`, `ListInventoryByEvent`, `SearchInventoryForEvent`. Phase 2 returns vendor ID, asking price, condition, and quantity; display-name/booth decoration and caller authorization belong to the Phase 4 gateway as described below.
 
 **Buy List Service (Java + Spring Boot + gRPC + Kafka producer)**
 - Vendors maintain a list of cards they want to acquire.
@@ -402,6 +404,10 @@ card_name,set_name,condition,quantity,price,priority
 Charizard ex,Obsidian Flames,NM,3,45.00,normal
 Pikachu VMAX,Vivid Voltage,LP,1,12.50,liquidate
 ```
+Optional `grading_company` and `grade` columns must be supplied as a pair. A quoted
+card or set name may contain commas. `asking_price` is accepted as an alias for
+`price`. The preview response separates automatically resolved rows from rejected or
+ambiguous rows and includes up to three ranked card candidates for manual review.
 
 ### Database Schemas
 

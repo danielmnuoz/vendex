@@ -72,6 +72,30 @@ public class CardRepository {
         }
     }
 
+    public Optional<Card> findById(UUID id) {
+        try {
+            Card card = jdbc.queryForObject(
+                    "SELECT * FROM cards WHERE id = :id",
+                    new MapSqlParameterSource("id", id),
+                    ROW_MAPPER
+            );
+            return Optional.ofNullable(card);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
+    public List<Card> findByIds(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.query(
+                "SELECT * FROM cards WHERE id IN (:ids)",
+                new MapSqlParameterSource("ids", ids),
+                ROW_MAPPER
+        );
+    }
+
     public List<Card> findByExternalIds(Collection<String> externalIds) {
         if (externalIds.isEmpty()) {
             return List.of();

@@ -17,6 +17,7 @@
         <module>services/auth</module>
         <module>services/card-catalog</module>
         <module>services/event</module>
+        <module>services/inventory</module>
     </modules>
 
     <properties>

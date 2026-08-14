@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Read-side façade for the card catalog. Stateless; safe to call
@@ -35,10 +36,19 @@ public class CardService {
         this.props = props;
     }
 
-    public Card getById(String externalId) {
-        if (externalId == null || externalId.isBlank()) {
+    public Card getById(String cardId) {
+        if (cardId == null || cardId.isBlank()) {
             throw new CardExceptions.ValidationException("card_id is required");
         }
+        UUID canonicalId = parseUuid(cardId);
+        if (canonicalId != null) {
+            Card card = cards.findById(canonicalId)
+                    .orElseThrow(() -> new CardExceptions.CardNotFoundException(cardId));
+            cache.put(card);
+            return card;
+        }
+
+        String externalId = cardId;
         Optional<Card> cached = cache.get(externalId);
         if (cached.isPresent()) {
             return cached.get();
@@ -50,14 +60,25 @@ public class CardService {
     }
 
     /**
-     * Hydrate up to N cards by external_id. Unknown IDs are simply absent
-     * from the response; callers can diff against the request to detect
-     * missing ones. Order matches the order requested.
+     * Hydrate up to N cards by canonical UUID or legacy external ID. Unknown
+     * IDs are simply absent from the response; callers can diff against the
+     * request to detect missing ones. Order matches the order requested.
      */
-    public List<Card> getByIds(List<String> externalIds) {
-        if (externalIds == null || externalIds.isEmpty()) {
+    public List<Card> getByIds(List<String> cardIds) {
+        if (cardIds == null || cardIds.isEmpty()) {
             return List.of();
         }
+        List<UUID> canonicalIds = new ArrayList<>();
+        List<String> externalIds = new ArrayList<>();
+        for (String cardId : cardIds) {
+            UUID canonicalId = parseUuid(cardId);
+            if (canonicalId == null) {
+                externalIds.add(cardId);
+            } else {
+                canonicalIds.add(canonicalId);
+            }
+        }
+
         Map<String, Card> hits = cache.getMany(externalIds);
         List<String> missing = new ArrayList<>();
         for (String id : externalIds) {
@@ -72,8 +93,14 @@ public class CardService {
                 hits.put(c.externalId(), c);
             }
         }
+
+        if (!canonicalIds.isEmpty()) {
+            for (Card card : cards.findByIds(canonicalIds)) {
+                hits.put(card.id().toString(), card);
+            }
+        }
         Map<String, Card> ordered = new LinkedHashMap<>();
-        for (String id : externalIds) {
+        for (String id : cardIds) {
             Card c = hits.get(id);
             if (c != null) {
                 ordered.put(id, c);
@@ -109,6 +136,14 @@ public class CardService {
             return s.defaultPageSize();
         }
         return Math.min(requested, s.maxPageSize());
+    }
+
+    private static UUID parseUuid(String value) {
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public record SearchResult(List<Card> cards, String nextPageToken) {}

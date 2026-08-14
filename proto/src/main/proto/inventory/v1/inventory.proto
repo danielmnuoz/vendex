@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+package vendex.inventory.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vendex.inventory.v1";
+option java_outer_classname = "InventoryProto";
+
+service InventoryService {
+  rpc AddInventory(AddInventoryRequest) returns (AddInventoryResponse);
+  rpc BulkImportCSV(BulkImportCSVRequest) returns (BulkImportCSVResponse);
+  rpc UpdateItem(UpdateInventoryItemRequest) returns (UpdateInventoryItemResponse);
+  rpc RemoveItem(RemoveInventoryItemRequest) returns (RemoveInventoryItemResponse);
+  rpc ListInventory(ListInventoryRequest) returns (ListInventoryResponse);
+  rpc ListInventoryByEvent(ListInventoryByEventRequest) returns (ListInventoryResponse);
+  rpc SearchInventoryForEvent(SearchInventoryForEventRequest) returns (ListInventoryResponse);
+}
+
+enum CardCondition {
+  CARD_CONDITION_UNSPECIFIED = 0;
+  CARD_CONDITION_NM = 1;
+  CARD_CONDITION_LP = 2;
+  CARD_CONDITION_MP = 3;
+  CARD_CONDITION_HP = 4;
+  CARD_CONDITION_DMG = 5;
+}
+
+enum InventoryPriority {
+  INVENTORY_PRIORITY_UNSPECIFIED = 0;
+  INVENTORY_PRIORITY_NORMAL = 1;
+  INVENTORY_PRIORITY_LIQUIDATE = 2;
+}
+
+message InventoryItem {
+  string id = 1;
+  string vendor_id = 2;
+  string card_id = 3;
+  string event_id = 4; // Empty means always available.
+  CardCondition condition = 5;
+  string grading_company = 6;
+  string grade = 7; // Decimal string; empty for ungraded cards.
+  int32 quantity = 8;
+  string asking_price = 9; // Decimal string avoids binary floating-point money.
+  InventoryPriority priority = 10;
+  int64 created_at_epoch_seconds = 11;
+  int64 updated_at_epoch_seconds = 12;
+}
+
+message AddInventoryRequest {
+  string vendor_id = 1;
+  string card_id = 2; // Canonical Card Catalog UUID.
+  string event_id = 3;
+  CardCondition condition = 4;
+  string grading_company = 5;
+  string grade = 6;
+  int32 quantity = 7;
+  string asking_price = 8;
+  InventoryPriority priority = 9;
+}
+
+message AddInventoryResponse { InventoryItem item = 1; }
+
+message UpdateInventoryItemRequest {
+  string item_id = 1;
+  string vendor_id = 2;
+  string event_id = 3;
+  CardCondition condition = 4;
+  string grading_company = 5;
+  string grade = 6;
+  int32 quantity = 7;
+  string asking_price = 8;
+  InventoryPriority priority = 9;
+}
+
+message UpdateInventoryItemResponse { InventoryItem item = 1; }
+
+message RemoveInventoryItemRequest {
+  string item_id = 1;
+  string vendor_id = 2;
+}
+
+message RemoveInventoryItemResponse { InventoryItem removed_item = 1; }
+
+message ListInventoryRequest {
+  string vendor_id = 1;
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+
+message ListInventoryByEventRequest {
+  string vendor_id = 1;
+  string event_id = 2;
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+
+message SearchInventoryForEventRequest {
+  string event_id = 1;
+  string card_id = 2; // Required: inventory is query-only, never browseable.
+  repeated CardCondition conditions = 3;
+  string max_asking_price = 4;
+  int32 page_size = 5;
+  int32 page_offset = 6;
+}
+
+message ListInventoryResponse {
+  repeated InventoryItem items = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}
+
+message BulkImportCSVRequest {
+  string vendor_id = 1;
+  string event_id = 2;
+  string csv_content = 3;
+  bool dry_run = 4;
+}
+
+message CsvResolvedRow {
+  int32 row_number = 1;
+  string card_id = 2;
+  string card_name = 3;
+  string set_name = 4;
+  CardCondition condition = 5;
+  string grading_company = 6;
+  string grade = 7;
+  int32 quantity = 8;
+  string asking_price = 9;
+  InventoryPriority priority = 10;
+  double confidence = 11;
+}
+
+message CardMatchCandidate {
+  string card_id = 1;
+  string card_name = 2;
+  string set_name = 3;
+  double confidence = 4;
+}
+
+message CsvImportIssue {
+  int32 row_number = 1;
+  string card_name = 2;
+  string set_name = 3;
+  string reason = 4;
+  repeated CardMatchCandidate candidates = 5;
+}
+
+message BulkImportCSVResponse {
+  repeated InventoryItem imported_items = 1;
+  repeated CsvResolvedRow resolved_rows = 2;
+  repeated CsvImportIssue issues = 3;
+  bool committed = 4;
+}
