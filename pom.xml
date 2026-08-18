@@ -20,6 +20,7 @@
         <module>services/inventory</module>
         <module>services/buylist</module>
         <module>services/overlap</module>
+        <module>services/notification</module>
     </modules>
 
     <properties>

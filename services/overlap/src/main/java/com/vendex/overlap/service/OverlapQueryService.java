@@ -58,7 +58,7 @@ public class OverlapQueryService {
                     vendorId.toString(), new OverlapSaved(
                             saved.id(), overlap.id(), vendorId, overlap.eventId(),
                             overlap.buyerVendorId(), overlap.sellerVendorId(),
-                            overlap.cardId(), saved.createdAt()));
+                            overlap.cardId(), overlap.score(), saved.createdAt()));
         }
         return result.savedOverlap();
     }

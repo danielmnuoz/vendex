@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package vendex.notifications.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vendex.notification.v1";
+option java_outer_classname = "NotificationsProto";
+
+service NotificationService {
+  rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse);
+  rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+  rpc GetNotificationPreferences(GetNotificationPreferencesRequest) returns (NotificationPreferencesResponse);
+  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (NotificationPreferencesResponse);
+  rpc ListInterestsForOverlap(ListInterestsForOverlapRequest) returns (ListInterestsForOverlapResponse);
+}
+
+enum NotificationTrigger {
+  NOTIFICATION_TRIGGER_UNSPECIFIED = 0;
+  NOTIFICATION_TRIGGER_OVERLAP_BUYLIST = 1;
+  NOTIFICATION_TRIGGER_OVERLAP_LIQUIDATE = 2;
+  NOTIFICATION_TRIGGER_SAVED_OVERLAP_ACTIVE = 3;
+}
+
+enum DigestMode {
+  DIGEST_MODE_UNSPECIFIED = 0;
+  DIGEST_MODE_REAL_TIME = 1;
+  DIGEST_MODE_DAILY = 2;
+  DIGEST_MODE_EVENT_ONLY = 3;
+}
+
+enum InterestStatus {
+  INTEREST_STATUS_UNSPECIFIED = 0;
+  INTEREST_STATUS_PENDING = 1;
+  INTEREST_STATUS_REVEALED = 2;
+  INTEREST_STATUS_DECLINED = 3;
+  INTEREST_STATUS_EXPIRED = 4;
+}
+
+message Notification {
+  string id = 1;
+  string vendor_id = 2;
+  string event_id = 3;
+  NotificationTrigger trigger = 4;
+  string overlap_id = 5;
+  string card_id = 6;
+  string counterparty_vendor_id = 7;
+  string payload_json = 8;
+  bool read = 9;
+  bool active = 10;
+  int64 available_at_epoch_seconds = 11;
+  int64 created_at_epoch_seconds = 12;
+  int64 updated_at_epoch_seconds = 13;
+}
+
+message GetNotificationsRequest {
+  string vendor_id = 1;
+  string event_id = 2;
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+
+message GetNotificationsResponse {
+  repeated Notification notifications = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}
+
+message MarkAsReadRequest {
+  string vendor_id = 1;
+  string notification_id = 2;
+}
+
+message MarkAsReadResponse { Notification notification = 1; }
+
+message GetUnreadCountRequest {
+  string vendor_id = 1;
+  string event_id = 2;
+}
+
+message GetUnreadCountResponse { int64 unread_count = 1; }
+
+message NotificationPreferences {
+  string user_id = 1;
+  bool in_app_enabled = 2;
+  bool email_enabled = 3;
+  bool overlap_buylist_enabled = 4;
+  bool overlap_liquidate_enabled = 5;
+  bool saved_overlap_active_enabled = 6;
+  DigestMode digest_mode = 7;
+  repeated string muted_event_ids = 8;
+  int64 updated_at_epoch_seconds = 9;
+}
+
+message GetNotificationPreferencesRequest { string user_id = 1; }
+
+message NotificationPreferencesResponse {
+  NotificationPreferences preferences = 1;
+}
+
+message UpdateNotificationPreferencesRequest {
+  string user_id = 1;
+  optional bool in_app_enabled = 2;
+  optional bool email_enabled = 3;
+  optional bool overlap_buylist_enabled = 4;
+  optional bool overlap_liquidate_enabled = 5;
+  optional bool saved_overlap_active_enabled = 6;
+  optional DigestMode digest_mode = 7;
+  repeated string muted_event_ids = 8;
+  bool replace_muted_event_ids = 9;
+}
+
+message OverlapInterest {
+  string id = 1;
+  string overlap_id = 2;
+  string interested_vendor_id = 3;
+  string counterparty_vendor_id = 4;
+  string event_id = 5;
+  string score = 6;
+  InterestStatus status = 7;
+  int64 created_at_epoch_seconds = 8;
+  int64 updated_at_epoch_seconds = 9;
+}
+
+message ListInterestsForOverlapRequest {
+  string seller_vendor_id = 1;
+  string overlap_id = 2;
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+
+message ListInterestsForOverlapResponse {
+  repeated OverlapInterest interests = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}

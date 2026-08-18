@@ -524,13 +524,14 @@ card on each vendor's persistent buy list.
 When a vendor takes action on an overlap (Save to Event Plan pre-event, or Express Interest in-event), an "interest" record is created. **Interests are not locks.** Multiple vendors can register interest on the same single-copy overlap. The seller sees all interested vendors ranked by overlap score and chooses one or more to reveal booth/contact info to (see Offer Service in Phase 4 for `RevealBoothToVendor`). This mirrors the attendee offer flow — the supply-holder picks among the demand-holders, with no stale lock risk if a vendor abandons the app.
 
 **Notification Service (Java + Spring Boot + Kafka consumer + PostgreSQL)**
-- Consumes `overlap.found` events.
-- Stores notifications per vendor in PostgreSQL.
-- Deduplicates: if the same overlap is found again (e.g., after an inventory update), update existing notification rather than creating a duplicate.
-- Re-surfaces saved overlaps as notifications when the corresponding event reaches its start time (T-0).
-- Honors per-vendor notification preferences: trigger toggles, channel toggles (in-app, email), per-event mutes, and digest mode (real-time / daily / event-only).
-- gRPC endpoints: `GetNotifications(vendor_id)`, `MarkAsRead(notification_id)`, `GetUnreadCount(vendor_id)`, `GetNotificationPreferences(user_id)`, `UpdateNotificationPreferences(user_id, fields)`.
-- Future: WebSocket for real-time push, push notifications. Deferred.
+- Consumes `overlap.found`, `overlap.saved`, `event.created`, and `event.updated` events into local timestamp-aware projections; feed reads never synchronously call Event or Overlap.
+- Stores one durable notification per `(vendor_id, overlap_id, trigger_type)` in PostgreSQL. Unchanged replays preserve read state, changed payloads and reactivation reset unread, and retired overlaps remain as inactive history.
+- Creates buyer activity for buy-list matches and seller activity only when the matched inventory is marked `liquidate`.
+- Re-surfaces saved overlaps when the corresponding event reaches its start date (T-0). `overlap.saved` includes the overlap score at save time so conversation interest retains its historical ranking.
+- Applies in-app trigger toggles, per-event mutes, and digest mode (real-time / daily / event-only) through durable `available_at` scheduling. Email preference state is persisted, but actual email transport is deferred until an authenticated email projection/provider adapter exists.
+- Stores non-locking saved-interest state and exposes seller-owned, score-ranked interest reads. Offer Service later owns reveal/decline actions and contact disclosure.
+- gRPC endpoints: `GetNotifications(vendor_id, event_id?)`, `MarkAsRead(vendor_id, notification_id)`, `GetUnreadCount(vendor_id, event_id?)`, `GetNotificationPreferences(user_id)`, `UpdateNotificationPreferences(user_id, fields)`, `ListInterestsForOverlap(seller_vendor_id, overlap_id)`.
+- Future: authenticated email delivery/outbox, bounded retry plus dead-letter topics and metrics, per-event IANA time zones, WebSocket real-time push, and push notifications.
 
 **The core experience comes alive:**
 - Vendor opens the app before a convention.
@@ -594,21 +595,59 @@ enforce participation against the opportunity. Notification Service consumes
 |---|---|---|
 | id | UUID | Primary key |
 | vendor_id | UUID | Recipient |
-| event_id | UUID | Event the notification is scoped to (nullable for global notifications) |
-| trigger_type | VARCHAR | overlap_buylist / overlap_liquidate / attendee_listing_match / price_drop / event_reminder / saved_overlap_active |
-| payload | JSONB | Trigger-specific data (overlap_id, card_id, vendor_id of counterparty, etc.) |
-| read | BOOLEAN | Default false |
-| created_at | TIMESTAMP | |
+| event_id | UUID | Event scope; current Phase 3 triggers are all event-scoped |
+| trigger_type | VARCHAR | overlap_buylist / overlap_liquidate / saved_overlap_active |
+| overlap_id | UUID | Stable pair-scoped opportunity identifier |
+| card_id | UUID | Canonical card identifier |
+| counterparty_vendor_id | UUID | Vendor on the other side of the opportunity |
+| payload | JSONB | Original overlap snapshot, or saved-plan envelope containing it |
+| active | BOOLEAN | False retains retired notification history |
+| is_read | BOOLEAN | Unchanged duplicate facts preserve this state |
+| source_occurred_at | TIMESTAMPTZ | Source ordering clock used for stale suppression |
+| available_at | TIMESTAMPTZ | Null/not-yet-arrived rows are not visible in the feed |
+| created_at / updated_at | TIMESTAMPTZ | Projection lifecycle timestamps |
+
+Unique constraint: `(vendor_id, overlap_id, trigger_type)`.
+
+**notification_db.event_schedules**
+| Column | Type | Notes |
+|---|---|---|
+| event_id | UUID | Primary key from event facts |
+| name | VARCHAR | Denormalized display context |
+| start_date / end_date | DATE | Local-date contract used for T-0 and event-only scheduling |
+| occurred_at | TIMESTAMPTZ | Stale event-fact suppression |
+
+**notification_db.overlap_snapshots**
+| Column | Type | Notes |
+|---|---|---|
+| overlap_id | UUID | Primary key |
+| event_id | UUID | Event scope |
+| buyer_vendor_id / seller_vendor_id | UUID | Pair roles |
+| card_id | UUID | Canonical card |
+| inventory_priority | VARCHAR | normal / liquidate |
+| score | DECIMAL | Current 0–100 overlap score |
+| payload | JSONB | Complete latest `overlap.found` fact |
+| active / action_rank | BOOLEAN / SMALLINT | Tombstone and equal-timestamp precedence state |
+| occurred_at | TIMESTAMPTZ | Source ordering clock |
+
+**notification_db.saved_plan_activations**
+| Column | Type | Notes |
+|---|---|---|
+| saved_overlap_id | UUID | Primary key from `overlap.saved` |
+| overlap_id / vendor_id / event_id | UUID | Stable plan identity and owner |
+| buyer_vendor_id / seller_vendor_id / card_id | UUID | Denormalized activation context |
+| score | DECIMAL | Score snapshot at save time |
+| saved_at / activated_at | TIMESTAMPTZ | Source time and first successful T-0 activation |
 
 **notification_db.notification_preferences**
 | Column | Type | Notes |
 |---|---|---|
 | user_id | UUID | Primary key |
-| channels | JSONB | `{"in_app": true, "email": true}` |
-| triggers | JSONB | Per-trigger toggle map, e.g. `{"overlap_buylist": true, "price_drop": false, ...}` |
+| in_app_enabled / email_enabled | BOOLEAN | Explicit channel preferences; email delivery adapter is not built yet |
+| triggers | JSONB | Per-trigger toggle map for the implemented Phase 3 triggers |
 | digest_mode | VARCHAR | real_time / daily / event_only |
 | event_mutes | JSONB | Array of event_ids the user has muted |
-| updated_at | TIMESTAMP | |
+| updated_at | TIMESTAMPTZ | |
 
 **notification_db.overlap_interests**
 | Column | Type | Notes |
@@ -620,8 +659,13 @@ enforce participation against the opportunity. Notification Service consumes
 | event_id | UUID | |
 | score | DECIMAL | Snapshot of the overlap score at time of interest |
 | status | VARCHAR | pending / revealed / declined / expired |
-| created_at | TIMESTAMP | |
-| updated_at | TIMESTAMP | |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | |
+
+Notification owns `pending` and `expired` lifecycle today. `revealed` and `declined`
+are reserved for the Phase 4 Offer workflow. Because an overlap ID includes one buyer,
+one seller, and one card, seller UI aggregation across several interested buyers must
+group their separate overlap/interest rows by event plus supply/card context.
 
 ---
 

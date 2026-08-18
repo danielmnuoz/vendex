@@ -13,16 +13,16 @@ COPY services/overlap/pom.xml services/overlap/pom.xml
 COPY services/notification/pom.xml services/notification/pom.xml
 RUN --mount=type=cache,target=/root/.m2 \
     apt-get update && apt-get install -y --no-install-recommends maven && \
-    mvn -B -pl services/event -am dependency:go-offline -DskipTests || true
+    mvn -B -pl services/notification -am dependency:go-offline -DskipTests || true
 
 COPY proto/src proto/src
 COPY events/src events/src
-COPY services/event/src services/event/src
+COPY services/notification/src services/notification/src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -pl services/event -am package -DskipTests
+    mvn -B -pl services/notification -am package -DskipTests
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /workspace/services/event/target/event-exec.jar /app/event.jar
+COPY --from=build /workspace/services/notification/target/notification-exec.jar /app/notification.jar
 EXPOSE 9090
-ENTRYPOINT ["java", "-jar", "/app/event.jar"]
+ENTRYPOINT ["java", "-jar", "/app/notification.jar"]

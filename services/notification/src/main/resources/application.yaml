@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: notification
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/notification_db}
+    username: ${SPRING_DATASOURCE_USERNAME:vendex}
+    password: ${SPRING_DATASOURCE_PASSWORD:vendex}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: ${NOTIFICATION_KAFKA_GROUP_ID:notification-projection-v1}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+  main:
+    web-application-type: none
+    banner-mode: off
+
+grpc:
+  server:
+    port: ${GRPC_SERVER_PORT:9090}
+
+notification:
+  event-zone: ${NOTIFICATION_EVENT_TIME_ZONE:UTC}
+  daily-digest-time: ${NOTIFICATION_DAILY_DIGEST_TIME:09:00}
+  activation-poll-ms: ${NOTIFICATION_ACTIVATION_POLL_MS:1000}
+  activation-initial-delay-ms: ${NOTIFICATION_ACTIVATION_INITIAL_DELAY_MS:1000}
+
+vendex:
+  outbox:
+    enabled: false
+
+logging:
+  level:
+    com.vendex: INFO
+    org.springframework.jdbc.core: WARN

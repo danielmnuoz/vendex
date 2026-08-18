@@ -3,6 +3,7 @@ package com.vendex.events.contract;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,5 +17,6 @@ public record OverlapSaved(
         UUID buyerVendorId,
         UUID sellerVendorId,
         UUID cardId,
+        BigDecimal score,
         Instant timestamp
 ) {}
