@@ -21,6 +21,7 @@
         <module>services/buylist</module>
         <module>services/overlap</module>
         <module>services/notification</module>
+        <module>gateway</module>
     </modules>
 
     <properties>
@@ -35,6 +36,7 @@
         <maven.compiler.parameters>true</maven.compiler.parameters>
 
         <spring-boot.version>3.4.1</spring-boot.version>
+        <spring-cloud.version>2024.0.0</spring-cloud.version>
         <grpc.version>1.68.1</grpc.version>
         <protobuf.version>3.25.5</protobuf.version>
         <grpc-spring-boot.version>3.1.0.RELEASE</grpc-spring-boot.version>
@@ -92,6 +94,13 @@
                 <groupId>io.grpc</groupId>
                 <artifactId>grpc-bom</artifactId>
                 <version>${grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

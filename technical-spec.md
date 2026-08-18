@@ -682,6 +682,21 @@ group their separate overlap/interest rows by event plus supply/card context.
 - JWT validation filter (Spring Security `OncePerRequestFilter` or Spring Cloud Gateway `GlobalFilter`) that calls `GetJWKS()` on the Auth Service and picks the right public key based on the token's `kid` claim.
 - Rate limiting via Redis (token bucket or sliding window — Spring Cloud Gateway has built-in `RequestRateLimiter` backed by Redis).
 - Request logging and error normalization.
+- **Implemented gateway foundation:** Spring Cloud Gateway Server MVC 4.2.0 on the
+  Spring Cloud 2024.0.0 release train; public vendor register/login/refresh;
+  protected card search/detail/set reads; and self-owned vendor profile read/update.
+  A correlation/security-header filter runs first, followed by a Redis sliding-window
+  IP ceiling, local RS256 validation using cached Auth JWKS, and a second public-IP or
+  authenticated-user rate window. Unknown `kid` values trigger one bounded JWKS
+  refresh; cached keys may be used for a configured stale interval during an Auth
+  outage. REST handlers derive `user_id` and role from verified claims rather than
+  accepting caller-supplied ownership. Every gRPC call has a deadline and gRPC status
+  codes map to a stable JSON error envelope. Protected Auth profile calls also forward
+  the already verified bearer token as gRPC metadata so Auth retains its independent
+  subject-ownership check. Redis failure is fail-closed because
+  admitting unmetered authentication traffic would defeat the gateway boundary.
+- The remaining vendor operation routes below layer onto this foundation in the next
+  Phase 4 gateway increment; the list remains the complete end-state route surface.
 - Route structure (Phase 4 — vendor-only; attendee routes added in Phase 5):
   - `POST /api/v1/auth/register`, `/login`, `/refresh`
   - `GET /api/v1/cards/search`, `/cards/:id`, `/sets`
