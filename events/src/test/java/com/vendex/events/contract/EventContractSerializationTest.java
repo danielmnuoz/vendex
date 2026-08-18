@@ -98,12 +98,14 @@ class EventContractSerializationTest {
         var event = new OverlapSaved(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                new BigDecimal("87.25"),
                 Instant.parse("2026-06-08T12:00:00Z"));
 
         String json = mapper.writeValueAsString(event);
 
         assertThat(mapper.readValue(json, OverlapSaved.class)).isEqualTo(event);
-        assertThat(json).contains("\"saved_overlap_id\":", "\"event_id\":");
+        assertThat(json).contains("\"saved_overlap_id\":", "\"event_id\":",
+                "\"score\":87.25");
     }
 
     @Test

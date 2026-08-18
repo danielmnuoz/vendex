@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: vendex
       POSTGRES_PASSWORD: vendex
-      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db,overlap_db
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db,overlap_db,notification_db
     ports:
       - "5432:5432"
     volumes:
@@ -81,7 +81,7 @@ services:
       POSTGRES_USER: vendex
       POSTGRES_PASSWORD: vendex
       POSTGRES_HOST: postgres
-      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db,overlap_db
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db,overlap_db,notification_db
       PGPASSWORD: vendex
     volumes:
       - ./scripts/postgres/init-multiple-dbs.sh:/usr/local/bin/init-multiple-dbs.sh:ro
@@ -220,6 +220,27 @@ services:
       GRPC_SERVER_PORT: 9090
     ports:
       - "9095:9090"
+    restart: unless-stopped
+
+  notification:
+    build:
+      context: .
+      dockerfile: services/notification/Dockerfile
+    container_name: vendex-notification
+    depends_on:
+      postgres-provision:
+        condition: service_completed_successfully
+      redpanda:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: vendex
+      SPRING_DATASOURCE_PASSWORD: vendex
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      GRPC_SERVER_PORT: 9090
+      NOTIFICATION_EVENT_TIME_ZONE: UTC
+    ports:
+      - "9096:9090"
     restart: unless-stopped
 
 volumes:
