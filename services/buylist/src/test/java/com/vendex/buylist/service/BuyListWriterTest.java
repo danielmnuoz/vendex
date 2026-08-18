@@ -51,7 +51,7 @@ class BuyListWriterTest {
 
         verify(outbox).write(eq("wanted_card"), eq(wantedCard.id().toString()),
                 eq(Topics.BUYLIST_UPDATED), eq(vendorId.toString()),
-                eq(new BuyListUpdated(vendorId, cardId, Action.ADDED, NOW)));
+                eq(fact(wantedCard, Action.ADDED)));
     }
 
     @Test
@@ -79,10 +79,10 @@ class BuyListWriterTest {
 
         verify(outbox).write(eq("wanted_card"), eq(current.id().toString()),
                 eq(Topics.BUYLIST_UPDATED), eq(current.vendorId().toString()),
-                eq(new BuyListUpdated(current.vendorId(), current.cardId(), Action.UPDATED, NOW)));
+                eq(fact(updated, Action.UPDATED)));
         verify(outbox).write(eq("wanted_card"), eq(current.id().toString()),
                 eq(Topics.BUYLIST_UPDATED), eq(current.vendorId().toString()),
-                eq(new BuyListUpdated(current.vendorId(), current.cardId(), Action.REMOVED, NOW)));
+                eq(fact(updated, Action.REMOVED)));
     }
 
     private static WantedCardInput input() {
@@ -92,5 +92,11 @@ class BuyListWriterTest {
     private static WantedCard wantedCard(UUID vendorId, UUID cardId) {
         return new WantedCard(UUID.randomUUID(), vendorId, cardId, CardCondition.LP,
                 new BigDecimal("25.00"), 2, NOW, NOW);
+    }
+
+    private static BuyListUpdated fact(WantedCard card, Action action) {
+        return new BuyListUpdated(card.id(), card.vendorId(), card.cardId(),
+                card.minimumCondition().name(), card.maxBuyPrice(), card.quantityWanted(),
+                action, NOW);
     }
 }

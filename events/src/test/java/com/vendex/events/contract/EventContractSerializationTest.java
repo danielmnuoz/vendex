@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -30,22 +31,27 @@ class EventContractSerializationTest {
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
                 UUID.fromString("22222222-2222-2222-2222-222222222222"),
                 UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                UUID.fromString("44444444-4444-4444-4444-444444444444"),
+                "NM", 2, new BigDecimal("14.50"), "normal",
                 Action.ADDED,
                 Instant.parse("2026-06-08T12:00:00Z"));
 
         String json = mapper.writeValueAsString(event);
 
         assertThat(json)
-                .contains("\"vendor_id\":\"11111111-1111-1111-1111-111111111111\"")
-                .contains("\"event_id\":\"22222222-2222-2222-2222-222222222222\"")
-                .contains("\"card_id\":\"33333333-3333-3333-3333-333333333333\"")
+                .contains("\"inventory_item_id\":\"11111111-1111-1111-1111-111111111111\"")
+                .contains("\"vendor_id\":\"22222222-2222-2222-2222-222222222222\"")
+                .contains("\"event_id\":\"33333333-3333-3333-3333-333333333333\"")
+                .contains("\"card_id\":\"44444444-4444-4444-4444-444444444444\"")
+                .contains("\"asking_price\":14.50")
                 .contains("\"action\":\"added\"")
                 .contains("\"timestamp\":\"2026-06-08T12:00:00Z\"");
     }
 
     @Test
     void inventoryUpdatedRoundTrips() throws Exception {
-        var event = new InventoryUpdated(UUID.randomUUID(), null, UUID.randomUUID(),
+        var event = new InventoryUpdated(UUID.randomUUID(), UUID.randomUUID(), null,
+                UUID.randomUUID(), "LP", 1, new BigDecimal("10.00"), "liquidate",
                 Action.REMOVED, Instant.parse("2026-06-08T12:00:00Z"));
 
         String json = mapper.writeValueAsString(event);
@@ -57,13 +63,47 @@ class EventContractSerializationTest {
 
     @Test
     void buyListUpdatedHasNoEventId() throws Exception {
-        var event = new BuyListUpdated(UUID.randomUUID(), UUID.randomUUID(),
-                Action.UPDATED, Instant.parse("2026-06-08T12:00:00Z"));
+        var event = new BuyListUpdated(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                "LP", new BigDecimal("25.00"), 2, Action.UPDATED,
+                Instant.parse("2026-06-08T12:00:00Z"));
 
         String json = mapper.writeValueAsString(event);
 
         assertThat(json).doesNotContain("event_id");
+        assertThat(json).contains("\"max_buy_price\":25.00");
         assertThat(json).contains("\"action\":\"updated\"");
+    }
+
+    @Test
+    void overlapFoundCarriesStableIdentityAndScoreSnapshot() throws Exception {
+        var event = new OverlapFound(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "NM", "LP",
+                2, 1, new BigDecimal("18.00"), new BigDecimal("20.00"),
+                "liquidate", new BigDecimal("91.25"), Action.ADDED,
+                Instant.parse("2026-06-08T12:00:00Z"));
+
+        String json = mapper.writeValueAsString(event);
+        OverlapFound back = mapper.readValue(json, OverlapFound.class);
+
+        assertThat(back).isEqualTo(event);
+        assertThat(json)
+                .contains("\"overlap_id\":")
+                .contains("\"buyer_vendor_id\":")
+                .contains("\"score\":91.25");
+    }
+
+    @Test
+    void overlapSavedCarriesEventPlanOwnership() throws Exception {
+        var event = new OverlapSaved(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                Instant.parse("2026-06-08T12:00:00Z"));
+
+        String json = mapper.writeValueAsString(event);
+
+        assertThat(mapper.readValue(json, OverlapSaved.class)).isEqualTo(event);
+        assertThat(json).contains("\"saved_overlap_id\":", "\"event_id\":");
     }
 
     @Test

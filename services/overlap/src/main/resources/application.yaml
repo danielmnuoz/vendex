@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: overlap
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/overlap_db}
+    username: ${SPRING_DATASOURCE_USERNAME:vendex}
+    password: ${SPRING_DATASOURCE_PASSWORD:vendex}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  flyway:
+    enabled: true
+    locations: classpath:db/migration,classpath:db/outbox
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: ${OVERLAP_KAFKA_GROUP_ID:overlap-projection-v1}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      ack-mode: record
+  main:
+    web-application-type: none
+    banner-mode: off
+
+grpc:
+  server:
+    port: ${GRPC_SERVER_PORT:9090}
+
+overlap:
+  score-threshold: ${OVERLAP_SCORE_THRESHOLD:0.00}
+
+vendex:
+  outbox:
+    enabled: true
+    batch-size: 100
+    poll-interval-ms: 250
+
+logging:
+  level:
+    com.vendex: INFO
+    org.springframework.jdbc.core: WARN

@@ -56,7 +56,7 @@ class InventoryWriterTest {
         verify(outbox).write(eq("inventory_item"), eq(item.id().toString()),
                 eq(Topics.INVENTORY_UPDATED), eq(vendorId.toString()), payload.capture());
         assertThat(payload.getValue()).isEqualTo(
-                new InventoryUpdated(vendorId, input.eventId(), cardId, Action.ADDED, NOW));
+                fact(item, input.eventId(), Action.ADDED));
     }
 
     @Test
@@ -75,8 +75,8 @@ class InventoryWriterTest {
                 eq(current.id().toString()), eq(Topics.INVENTORY_UPDATED),
                 eq(vendorId.toString()), payloads.capture());
         assertThat(payloads.getAllValues()).containsExactly(
-                new InventoryUpdated(vendorId, current.eventId(), cardId, Action.REMOVED, NOW),
-                new InventoryUpdated(vendorId, moved.eventId(), cardId, Action.ADDED, NOW));
+                fact(current, current.eventId(), Action.REMOVED),
+                fact(moved, moved.eventId(), Action.ADDED));
     }
 
     @Test
@@ -115,5 +115,11 @@ class InventoryWriterTest {
         return new InventoryItem(id, vendorId, cardId, input.eventId(), input.condition(),
                 input.gradingCompany(), input.grade(), input.quantity(), input.askingPrice(),
                 input.priority(), NOW, NOW);
+    }
+
+    private static InventoryUpdated fact(InventoryItem item, UUID eventId, Action action) {
+        return new InventoryUpdated(item.id(), item.vendorId(), eventId, item.cardId(),
+                item.condition().name(), item.quantity(), item.askingPrice(),
+                item.priority().name().toLowerCase(), action, NOW);
     }
 }

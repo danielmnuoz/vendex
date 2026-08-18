@@ -15,4 +15,6 @@ public final class Topics {
     public static final String EVENT_VENDOR_REGISTERED = "event.vendor_registered";
     public static final String EVENT_ATTENDEE_REGISTERED = "event.attendee_registered";
     public static final String EVENT_PARTICIPANT_UNREGISTERED = "event.participant_unregistered";
+    public static final String OVERLAP_FOUND = "overlap.found";
+    public static final String OVERLAP_SAVED = "overlap.saved";
 }

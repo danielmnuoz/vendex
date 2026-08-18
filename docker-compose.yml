@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: vendex
       POSTGRES_PASSWORD: vendex
-      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db,overlap_db
     ports:
       - "5432:5432"
     volumes:
@@ -71,14 +71,31 @@ services:
       - "8080:8080"
     restart: unless-stopped
 
+  postgres-provision:
+    image: postgres:16-alpine
+    container_name: vendex-postgres-provision
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: vendex
+      POSTGRES_PASSWORD: vendex
+      POSTGRES_HOST: postgres
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_catalog_db,event_db,inventory_db,buylist_db,overlap_db
+      PGPASSWORD: vendex
+    volumes:
+      - ./scripts/postgres/init-multiple-dbs.sh:/usr/local/bin/init-multiple-dbs.sh:ro
+    entrypoint: ["/bin/bash", "/usr/local/bin/init-multiple-dbs.sh"]
+    restart: "no"
+
   auth:
     build:
       context: .
       dockerfile: services/auth/Dockerfile
     container_name: vendex-auth
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-provision:
+        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
       SPRING_DATASOURCE_USERNAME: vendex
@@ -100,8 +117,8 @@ services:
       dockerfile: services/card-catalog/Dockerfile
     container_name: vendex-card-catalog
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-provision:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     environment:
@@ -121,8 +138,8 @@ services:
       dockerfile: services/event/Dockerfile
     container_name: vendex-event
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-provision:
+        condition: service_completed_successfully
       redpanda:
         condition: service_healthy
     environment:
@@ -141,8 +158,8 @@ services:
       dockerfile: services/inventory/Dockerfile
     container_name: vendex-inventory
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-provision:
+        condition: service_completed_successfully
       redpanda:
         condition: service_healthy
       card-catalog:
@@ -164,8 +181,8 @@ services:
       dockerfile: services/buylist/Dockerfile
     container_name: vendex-buylist
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-provision:
+        condition: service_completed_successfully
       redpanda:
         condition: service_healthy
       card-catalog:
@@ -179,6 +196,30 @@ services:
       GRPC_SERVER_PORT: 9090
     ports:
       - "9094:9090"
+    restart: unless-stopped
+
+  overlap:
+    build:
+      context: .
+      dockerfile: services/overlap/Dockerfile
+    container_name: vendex-overlap
+    depends_on:
+      postgres-provision:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/overlap_db
+      SPRING_DATASOURCE_USERNAME: vendex
+      SPRING_DATASOURCE_PASSWORD: vendex
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      GRPC_SERVER_PORT: 9090
+    ports:
+      - "9095:9090"
     restart: unless-stopped
 
 volumes:
