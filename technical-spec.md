@@ -360,20 +360,26 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 
 **Kafka Topics & Event Schemas**
 ```
-inventory.updated     → { vendor_id, event_id, card_id, action: "added"|"removed"|"updated", timestamp }
-buylist.updated       → { vendor_id, card_id, action: "added"|"removed"|"updated", timestamp }
+inventory.updated     → { inventory_item_id, vendor_id, event_id?, card_id, condition, quantity, asking_price, priority, action, timestamp }
+buylist.updated       → { wanted_card_id, vendor_id, card_id, minimum_condition, max_buy_price, quantity_wanted, action, timestamp }
 event.created         → { event_id, organizer_id, name, city, state, start_date, end_date, timestamp }
 event.updated         → { event_id, organizer_id, name, city, state, start_date, end_date, timestamp }
 event.vendor_registered → { event_id, vendor_id, timestamp }
 event.attendee_registered → { event_id, attendee_id, timestamp }
 event.participant_unregistered → { event_id, user_id, role: "vendor"|"attendee", timestamp }
+overlap.found         → { overlap_id, event_id, buyer_vendor_id, seller_vendor_id, card_id, inventory_item_id, wanted_card_id, seller_condition, minimum_condition, available_quantity, quantity_wanted, asking_price, max_buy_price, inventory_priority, score, action, timestamp }
+overlap.saved         → { saved_overlap_id, overlap_id, vendor_id, event_id, buyer_vendor_id, seller_vendor_id, card_id, timestamp }
 ```
 Payloads are JSON. Contracts (the record classes + topic-name constants) live in a
 shared `events/` Maven module that both Phase 2 producers and the Phase 3 consumers
 compile against. Keys preserve ordering for the entity being changed: inventory and
-buy-list messages use `vendor_id`, event metadata uses `event_id`, and roster changes
-use the participant's user ID. Local development uses a single partition; additional
-partitions can be introduced without changing those ordering boundaries.
+buy-list messages use `vendor_id`, event metadata uses `event_id`, roster changes
+use the participant's user ID, live overlap changes use `overlap_id`, and saved-plan
+actions use `vendor_id`. Inventory and buy-list facts carry the complete scoring
+snapshot, including their stable row ID, so consumers never need a synchronous
+callback to a producer and can distinguish multiple copies of the same card. Local
+development uses a single partition; additional partitions can be introduced without
+changing those ordering boundaries.
 
 **Transactional outbox (how events get published).** Producers do **not** publish to
 Kafka directly inside their request path — that would reintroduce the dual-write
@@ -487,26 +493,30 @@ card on each vendor's persistent buy list.
 
 ### Deliverables
 
-**Recompute is Kafka-driven only.** Overlap recomputation is triggered exclusively by `inventory.updated`, `buylist.updated`, and `event.vendor_registered` Kafka events. The gRPC endpoint `GetOverlapsForVendor` is a pure read from precomputed Redis sets and PostgreSQL — it never triggers recomputation. This guarantees read latency stays bounded regardless of inventory size.
+**Recompute is Kafka-driven only.** Overlap recomputation is triggered exclusively by `inventory.updated`, `buylist.updated`, `event.vendor_registered`, and vendor `event.participant_unregistered` Kafka events. The gRPC endpoint `GetOverlapsForVendor` is a pure PostgreSQL read of results computed from Redis projections — it never triggers recomputation. This guarantees read latency stays bounded regardless of inventory size.
 
 **Overlap Detection Engine (Java + Spring Boot + Redis + Kafka consumer)**
-- Consumes `inventory.updated`, `buylist.updated`, and `event.vendor_registered` events from Kafka.
+- Consumes `inventory.updated`, `buylist.updated`, `event.vendor_registered`, and vendor-unregistration events from Kafka.
 - Maintains Redis data structures per event:
-  - `event:{event_id}:vendor:{vendor_id}:inventory` → Set of card IDs this vendor has
-  - `event:{event_id}:vendor:{vendor_id}:buylist` → Set of card IDs this vendor wants
-  - `event:{event_id}:vendors` → Set of vendor IDs registered for this event
+  - `vendex:overlap:event:{event_id}:vendor:{vendor_id}:inventory` → materialized Set of card IDs this vendor has at the event (global plus event-scoped supply)
+  - `vendex:overlap:event:{event_id}:vendor:{vendor_id}:buylist` → materialized Set of persistent card IDs this vendor wants
+  - `vendex:overlap:event:{event_id}:vendors` → Set of active vendor IDs
+  - Timestamped inventory, demand, and roster hashes retain inactive tombstones; source card→item-ID sets preserve duplicate inventory rows and rebuild event views after registration.
 - On each relevant event, computes overlaps:
   - For each pair of vendors attending the same event: intersect Vendor A's inventory with Vendor B's buy list, and vice versa.
   - Only recompute affected pairs when inventory or buy lists change (not full recalculation).
+  - A deterministic overlap UUID is derived from `(event_id, buyer_vendor_id, seller_vendor_id, card_id)`. The best eligible inventory row may change without changing the opportunity's identity.
 - Overlap scoring:
-  - Price alignment: is the asking price within the buyer's max price? Closer = higher score.
-  - Condition match: does the card's condition meet the buyer's minimum?
-  - Quantity: can the seller fulfill the buyer's quantity need?
-  - Priority: seller marked "liquidate" boosts score (motivated seller).
-- Publishes `overlap.found` events to Kafka with details and score.
+  - Eligibility first requires `asking_price <= max_buy_price` and seller condition at or above the buyer's minimum.
+  - Price alignment contributes 35 points (`asking / max`, so closer terms rank higher; free-for-free gets all 35).
+  - Condition contributes 20 base points plus up to 5 for quality above the minimum.
+  - Quantity contributes up to 25 points based on the fulfilled fraction.
+  - Seller priority contributes 15 points when marked `liquidate`.
+  - The configurable threshold defaults to zero, so every eligible opportunity is surfaced while the score controls ranking.
+- Reconciles active opportunities in `overlap_db`, retains inactive history, and publishes idempotent `overlap.found` added/updated/removed facts through a transactional outbox.
 - gRPC endpoints:
   - `GetOverlapsForVendor(vendor_id, event_id)` → list of opportunities with scores.
-  - `SaveOverlap(vendor_id, overlap_id)` → marks an overlap as saved to a vendor's event plan. Pre-event action — re-surfaces as a notification at booth-setup time on event day.
+  - `SaveOverlap(vendor_id, overlap_id)` → idempotently marks an active overlap as saved to a participating vendor's event plan and emits `overlap.saved`. Pre-event action — re-surfaces as a notification at booth-setup time on event day.
   - `ListSavedOverlaps(vendor_id, event_id)` → vendor's saved-for-later list.
 
 **Conversation State — all-can-bid, seller chooses**
@@ -538,13 +548,46 @@ On inventory.updated or buylist.updated for vendor V at event E:
 
     For each overlapping card:
       score = compute_score(price_alignment, condition_match, quantity, priority)
-      if score > threshold:
+      if eligible and score > configured_threshold:
         publish overlap.found event
 ```
 
 Redis `SINTER` handles the set intersection efficiently. Scoring is computed in Java after intersection results are retrieved.
 
 ### Phase 3 Database Schemas
+
+**overlap_db.overlap_opportunities**
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | Deterministic primary key from event + buyer + seller + card |
+| event_id | UUID | Event context |
+| buyer_vendor_id | UUID | Demand holder |
+| seller_vendor_id | UUID | Supply holder; must differ from buyer |
+| card_id | UUID | Canonical card |
+| inventory_item_id | UUID | Currently best eligible supply row |
+| wanted_card_id | UUID | Persistent demand row |
+| seller_condition / minimum_condition | VARCHAR | Eligibility snapshot |
+| available_quantity / quantity_wanted | INT | Fulfillment snapshot |
+| asking_price / max_buy_price | DECIMAL | Price-alignment snapshot |
+| inventory_priority | VARCHAR | normal / liquidate |
+| score | DECIMAL | 0–100 ranking snapshot |
+| active | BOOLEAN | False rows retain retired history and stable identity |
+| created_at / updated_at | TIMESTAMPTZ | Materialization timestamps |
+
+Unique constraint: `(event_id, buyer_vendor_id, seller_vendor_id, card_id)`.
+
+**overlap_db.saved_overlaps**
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | Primary key |
+| vendor_id | UUID | Participating vendor who saved the plan |
+| overlap_id | UUID | FK to `overlap_opportunities` |
+| event_id | UUID | Denormalized for event-plan pagination |
+| created_at | TIMESTAMPTZ | First-save timestamp; repeated saves are idempotent |
+
+The Overlap service owns saved-plan truth because it owns the save/list API and can
+enforce participation against the opportunity. Notification Service consumes
+`overlap.saved` and owns its separate activation/delivery state for T-0 resurfacing.
 
 **notification_db.notifications**
 | Column | Type | Notes |
@@ -579,16 +622,6 @@ Redis `SINTER` handles the set intersection efficiently. Scoring is computed in 
 | status | VARCHAR | pending / revealed / declined / expired |
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
-
-**notification_db.saved_overlaps**
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID | Primary key |
-| vendor_id | UUID | The vendor who saved the overlap |
-| overlap_id | UUID | Identifier of the overlap |
-| event_id | UUID | |
-| activated_at | TIMESTAMP | Nullable — set when the event reaches T-0 and the saved overlap becomes an active notification |
-| created_at | TIMESTAMP | |
 
 ---
 

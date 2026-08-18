@@ -10,6 +10,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -32,7 +33,8 @@ class OutboxWriterTest {
         OutboxWriter writer = new OutboxWriter(repository, objectMapper);
         UUID vendorId = UUID.randomUUID();
         UUID cardId = UUID.randomUUID();
-        var payload = new BuyListUpdated(vendorId, cardId, Action.ADDED,
+        var payload = new BuyListUpdated(UUID.randomUUID(), vendorId, cardId, "LP",
+                new BigDecimal("25.00"), 2, Action.ADDED,
                 Instant.parse("2026-06-08T12:00:00Z"));
         when(repository.insert(eq("wanted_card"), eq(cardId.toString()), eq(Topics.BUYLIST_UPDATED),
                 eq(vendorId.toString()), org.mockito.ArgumentMatchers.anyString()))

@@ -62,6 +62,8 @@ public class BuyListWriter {
     private void publish(WantedCard wantedCard, Action action, Instant timestamp) {
         outbox.write("wanted_card", wantedCard.id().toString(), Topics.BUYLIST_UPDATED,
                 wantedCard.vendorId().toString(),
-                new BuyListUpdated(wantedCard.vendorId(), wantedCard.cardId(), action, timestamp));
+                new BuyListUpdated(wantedCard.id(), wantedCard.vendorId(), wantedCard.cardId(),
+                        wantedCard.minimumCondition().name(), wantedCard.maxBuyPrice(),
+                        wantedCard.quantityWanted(), action, timestamp));
     }
 }

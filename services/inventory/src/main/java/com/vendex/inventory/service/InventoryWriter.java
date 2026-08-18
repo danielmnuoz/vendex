@@ -77,7 +77,9 @@ public class InventoryWriter {
     private void publish(InventoryItem item, Action action, UUID eventId, Instant timestamp) {
         outbox.write("inventory_item", item.id().toString(), Topics.INVENTORY_UPDATED,
                 item.vendorId().toString(),
-                new InventoryUpdated(item.vendorId(), eventId, item.cardId(), action, timestamp));
+                new InventoryUpdated(item.id(), item.vendorId(), eventId, item.cardId(),
+                        item.condition().name(), item.quantity(), item.askingPrice(),
+                        item.priority().name().toLowerCase(), action, timestamp));
     }
 
     public record BatchEntry(UUID cardId, InventoryItemInput input) {}

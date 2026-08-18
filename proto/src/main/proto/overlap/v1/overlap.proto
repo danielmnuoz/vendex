@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package vendex.overlap.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vendex.overlap.v1";
+option java_outer_classname = "OverlapProto";
+
+service OverlapService {
+  rpc GetOverlapsForVendor(GetOverlapsForVendorRequest) returns (ListOverlapsResponse);
+  rpc SaveOverlap(SaveOverlapRequest) returns (SaveOverlapResponse);
+  rpc ListSavedOverlaps(ListSavedOverlapsRequest) returns (ListSavedOverlapsResponse);
+}
+
+message Overlap {
+  string id = 1;
+  string event_id = 2;
+  string buyer_vendor_id = 3;
+  string seller_vendor_id = 4;
+  string card_id = 5;
+  string inventory_item_id = 6;
+  string wanted_card_id = 7;
+  string seller_condition = 8;
+  string minimum_condition = 9;
+  int32 available_quantity = 10;
+  int32 quantity_wanted = 11;
+  string asking_price = 12;
+  string max_buy_price = 13;
+  string inventory_priority = 14;
+  string score = 15;
+  bool active = 16;
+  int64 created_at_epoch_seconds = 17;
+  int64 updated_at_epoch_seconds = 18;
+}
+
+message GetOverlapsForVendorRequest {
+  string vendor_id = 1;
+  string event_id = 2;
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+
+message ListOverlapsResponse {
+  repeated Overlap overlaps = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}
+
+message SaveOverlapRequest {
+  string vendor_id = 1;
+  string overlap_id = 2;
+}
+
+message SavedOverlap {
+  string id = 1;
+  string vendor_id = 2;
+  Overlap overlap = 3;
+  int64 created_at_epoch_seconds = 4;
+}
+
+message SaveOverlapResponse { SavedOverlap saved_overlap = 1; }
+
+message ListSavedOverlapsRequest {
+  string vendor_id = 1;
+  string event_id = 2;
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+
+message ListSavedOverlapsResponse {
+  repeated SavedOverlap saved_overlaps = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}

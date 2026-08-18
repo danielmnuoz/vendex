@@ -3,6 +3,7 @@ package com.vendex.events.contract;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,9 +17,14 @@ import java.util.UUID;
  */
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record InventoryUpdated(
+        UUID inventoryItemId,
         UUID vendorId,
         UUID eventId,
         UUID cardId,
+        String condition,
+        int quantity,
+        BigDecimal askingPrice,
+        String priority,
         Action action,
         Instant timestamp
 ) {}
