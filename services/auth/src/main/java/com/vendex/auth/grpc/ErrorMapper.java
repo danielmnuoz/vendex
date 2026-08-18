@@ -25,6 +25,11 @@ public final class ErrorMapper {
     private ErrorMapper() {}
 
     public static StatusRuntimeException map(Throwable t) {
+        // Authorization helpers intentionally throw a gRPC status. Preserve it
+        // rather than hiding UNAUTHENTICATED/PERMISSION_DENIED as INTERNAL.
+        if (t instanceof StatusRuntimeException status) {
+            return status;
+        }
         if (t instanceof AuthExceptions.InvalidCredentialsException) {
             return Status.UNAUTHENTICATED.withDescription("invalid credentials").asRuntimeException();
         }

@@ -11,6 +11,7 @@ COPY services/inventory/pom.xml services/inventory/pom.xml
 COPY services/buylist/pom.xml services/buylist/pom.xml
 COPY services/overlap/pom.xml services/overlap/pom.xml
 COPY services/notification/pom.xml services/notification/pom.xml
+COPY gateway/pom.xml gateway/pom.xml
 RUN --mount=type=cache,target=/root/.m2 \
     apt-get update && apt-get install -y --no-install-recommends maven && \
     mvn -B -pl services/event -am dependency:go-offline -DskipTests || true
