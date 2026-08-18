@@ -18,6 +18,7 @@
         <module>services/card-catalog</module>
         <module>services/event</module>
         <module>services/inventory</module>
+        <module>services/buylist</module>
     </modules>
 
     <properties>

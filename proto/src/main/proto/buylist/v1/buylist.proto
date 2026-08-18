@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package vendex.buylist.v1;
+
+option java_multiple_files = true;
+option java_package = "com.vendex.buylist.v1";
+option java_outer_classname = "BuyListProto";
+
+service BuyListService {
+  rpc AddWantedCard(AddWantedCardRequest) returns (AddWantedCardResponse);
+  rpc UpdateWantedCard(UpdateWantedCardRequest) returns (UpdateWantedCardResponse);
+  rpc RemoveWantedCard(RemoveWantedCardRequest) returns (RemoveWantedCardResponse);
+  rpc ListBuyList(ListBuyListRequest) returns (ListWantedCardsResponse);
+  rpc ListBuyListsForEvent(ListBuyListsForEventRequest) returns (ListWantedCardsResponse);
+}
+
+enum CardCondition {
+  CARD_CONDITION_UNSPECIFIED = 0;
+  CARD_CONDITION_NM = 1;
+  CARD_CONDITION_LP = 2;
+  CARD_CONDITION_MP = 3;
+  CARD_CONDITION_HP = 4;
+  CARD_CONDITION_DMG = 5;
+}
+
+message WantedCard {
+  string id = 1;
+  string vendor_id = 2;
+  string card_id = 3; // Canonical Card Catalog UUID.
+  CardCondition minimum_condition = 4;
+  string max_buy_price = 5; // Decimal string avoids binary floating-point money.
+  int32 quantity_wanted = 6;
+  int64 created_at_epoch_seconds = 7;
+  int64 updated_at_epoch_seconds = 8;
+}
+
+message AddWantedCardRequest {
+  string vendor_id = 1;
+  string card_id = 2; // Canonical Card Catalog UUID.
+  CardCondition minimum_condition = 3;
+  string max_buy_price = 4;
+  int32 quantity_wanted = 5;
+}
+
+message AddWantedCardResponse { WantedCard wanted_card = 1; }
+
+message UpdateWantedCardRequest {
+  string wanted_card_id = 1;
+  string vendor_id = 2;
+  CardCondition minimum_condition = 3;
+  string max_buy_price = 4;
+  int32 quantity_wanted = 5;
+}
+
+message UpdateWantedCardResponse { WantedCard wanted_card = 1; }
+
+message RemoveWantedCardRequest {
+  string wanted_card_id = 1;
+  string vendor_id = 2;
+}
+
+message RemoveWantedCardResponse { WantedCard removed_wanted_card = 1; }
+
+message ListBuyListRequest {
+  string vendor_id = 1;
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+
+// Browseable demand from vendors whose projected roster state is active for
+// the event. Filters are optional; an empty request (apart from event_id)
+// intentionally browses all demand at that event.
+message ListBuyListsForEventRequest {
+  string event_id = 1;
+  string card_id = 2;
+  repeated CardCondition minimum_conditions = 3;
+  string min_max_buy_price = 4;
+  int32 page_size = 5;
+  int32 page_offset = 6;
+}
+
+message ListWantedCardsResponse {
+  repeated WantedCard wanted_cards = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}
