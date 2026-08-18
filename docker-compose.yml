@@ -255,11 +255,26 @@ services:
         condition: service_started
       card-catalog:
         condition: service_started
+      event:
+        condition: service_started
+      inventory:
+        condition: service_started
+      buylist:
+        condition: service_started
+      overlap:
+        condition: service_started
+      notification:
+        condition: service_started
     environment:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       GATEWAY_AUTH_TARGET: auth:9090
       GATEWAY_CARD_CATALOG_TARGET: card-catalog:9090
+      GATEWAY_EVENT_TARGET: event:9090
+      GATEWAY_INVENTORY_TARGET: inventory:9090
+      GATEWAY_BUY_LIST_TARGET: buylist:9090
+      GATEWAY_OVERLAP_TARGET: overlap:9090
+      GATEWAY_NOTIFICATION_TARGET: notification:9090
       GATEWAY_GRPC_PLAINTEXT: "true"
       GATEWAY_JWT_ISSUER: https://auth.vendex.local
       GATEWAY_CORS_ALLOWED_ORIGINS: http://localhost:3000

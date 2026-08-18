@@ -23,7 +23,12 @@ public record GatewayProperties(
     public record Services(
             boolean plaintext,
             @NotBlank String authTarget,
-            @NotBlank String cardCatalogTarget) {}
+            @NotBlank String cardCatalogTarget,
+            @NotBlank String eventTarget,
+            @NotBlank String inventoryTarget,
+            @NotBlank String buyListTarget,
+            @NotBlank String overlapTarget,
+            @NotBlank String notificationTarget) {}
 
     public record Jwt(
             @NotBlank String issuer,

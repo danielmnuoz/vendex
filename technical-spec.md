@@ -695,18 +695,36 @@ group their separate overlap/interest rows by event plus supply/card context.
   the already verified bearer token as gRPC metadata so Auth retains its independent
   subject-ownership check. Redis failure is fail-closed because
   admitting unmetered authentication traffic would defeat the gateway boundary.
-- The remaining vendor operation routes below layer onto this foundation in the next
-  Phase 4 gateway increment; the list remains the complete end-state route surface.
+- **Implemented vendor workflow layer:** inventory CRUD and CSV dry-run/commit;
+  buy-list CRUD; event browse/detail and self registration; registered-vendor roster;
+  event-scoped supply search and demand browse; overlap/saved-plan/interest reads;
+  save action; notification feed/read/count/preferences; and public vendor decoration.
+  Every ownership field sent to a backend is derived from the verified JWT. Event-scoped
+  supply, demand, overlap, saved-plan, and roster reads first confirm the caller appears
+  in Event Service's vendor roster. Cross-vendor profile decoration maps Auth's protobuf
+  into a separate public DTO that omits email, and event pages add booth context from the
+  same roster snapshot. Each distinct profile lookup receives its own gRPC deadline.
 - Route structure (Phase 4 — vendor-only; attendee routes added in Phase 5):
   - `POST /api/v1/auth/register`, `/login`, `/refresh`
   - `GET /api/v1/cards/search`, `/cards/:id`, `/sets`
-  - `GET/POST /api/v1/inventory`, `POST /api/v1/inventory/import`
+  - `GET/POST /api/v1/inventory` (optional self-owned `eventId` filter),
+    `PUT/DELETE /api/v1/inventory/:id`,
+    `POST /api/v1/inventory/import`
   - `GET /api/v1/inventory/event/:event_id/search?card_id=…` (query-only; no list-all)
-  - `GET/POST /api/v1/buylist`, `GET /api/v1/buylist/event/:event_id` (browseable)
-  - `GET/POST /api/v1/events`, `POST /api/v1/events/:id/register`
-  - `GET /api/v1/overlaps/:event_id`, `POST /api/v1/overlaps/:id/save`
-  - `GET /api/v1/notifications`, `GET/PATCH /api/v1/notifications/preferences`
+  - `GET/POST /api/v1/buylist`, `PUT/DELETE /api/v1/buylist/:id`,
+    `GET /api/v1/buylist/event/:event_id` (browseable)
+  - `GET /api/v1/events`, `GET /api/v1/events/:id`,
+    `POST/DELETE /api/v1/events/:id/register`, `GET /api/v1/events/:id/vendors`
+  - `GET /api/v1/overlaps/event/:event_id`,
+    `GET /api/v1/overlaps/event/:event_id/saved`,
+    `POST /api/v1/overlaps/:id/save`, `GET /api/v1/overlaps/:id/interests`
+  - `GET /api/v1/notifications`, `PATCH /api/v1/notifications/:id/read`,
+    `GET /api/v1/notifications/unread-count`,
+    `GET/PATCH /api/v1/notifications/preferences`
   - `GET/PATCH /api/v1/profile`
+- `POST/PUT /api/v1/events` are intentionally not part of the vendor gateway surface.
+  `product-spec.md` defers organizer event creation and editing to a later organizer UX;
+  until then the operator uses the existing Event Service gRPC/admin path.
 
 **Vendor Frontend (Next.js on Vercel)**
 - Mobile-first responsive design — conventions are a phone-in-hand context. Both desktop and mobile vendor layouts ship in this phase.

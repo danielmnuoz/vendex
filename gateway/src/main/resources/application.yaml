@@ -27,6 +27,11 @@ gateway:
     plaintext: ${GATEWAY_GRPC_PLAINTEXT:true}
     auth-target: ${GATEWAY_AUTH_TARGET:localhost:9090}
     card-catalog-target: ${GATEWAY_CARD_CATALOG_TARGET:localhost:9091}
+    event-target: ${GATEWAY_EVENT_TARGET:localhost:9092}
+    inventory-target: ${GATEWAY_INVENTORY_TARGET:localhost:9093}
+    buy-list-target: ${GATEWAY_BUY_LIST_TARGET:localhost:9094}
+    overlap-target: ${GATEWAY_OVERLAP_TARGET:localhost:9095}
+    notification-target: ${GATEWAY_NOTIFICATION_TARGET:localhost:9096}
   jwt:
     issuer: ${GATEWAY_JWT_ISSUER:https://auth.vendex.local}
     cache-ttl: ${GATEWAY_JWKS_CACHE_TTL:5m}
