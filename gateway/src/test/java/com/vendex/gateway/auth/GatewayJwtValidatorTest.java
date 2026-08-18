@@ -41,7 +41,9 @@ class GatewayJwtValidatorTest {
                 keys,
                 new GatewayProperties(
                         Duration.ofSeconds(3),
-                        new GatewayProperties.Services(true, "auth", "cards"),
+                        new GatewayProperties.Services(
+                                true, "auth", "cards", "events", "inventory", "buylist",
+                                "overlap", "notifications"),
                         new GatewayProperties.Jwt(
                                 "https://auth.vendex.local",
                                 Duration.ofMinutes(5),
