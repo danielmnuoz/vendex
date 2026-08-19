@@ -13,6 +13,8 @@ import com.vendex.event.v1.GetEventResponse;
 import com.vendex.event.v1.GetEventVendorsRequest;
 import com.vendex.event.v1.ListEventsRequest;
 import com.vendex.event.v1.ListEventsResponse;
+import com.vendex.event.v1.ListEventRegistrationsForUserRequest;
+import com.vendex.event.v1.ListEventRegistrationsResponse;
 import com.vendex.event.v1.RegisterForEventRequest;
 import com.vendex.event.v1.RegisterForEventResponse;
 import com.vendex.event.v1.UnregisterFromEventRequest;
@@ -134,6 +136,28 @@ public class EventGrpcService extends EventServiceGrpc.EventServiceImplBase {
     public void getEventAttendees(GetEventAttendeesRequest request,
                                   StreamObserver<GetEventRegistrationsResponse> obs) {
         listRegistrations(request.getEventId(), RegistrationRole.ATTENDEE, obs);
+    }
+
+    @Override
+    public void listEventRegistrationsForUser(
+            ListEventRegistrationsForUserRequest request,
+            StreamObserver<ListEventRegistrationsResponse> obs) {
+        try {
+            var page = service.listRegistrationsForUser(
+                    uuid(request.getUserId(), "user_id"),
+                    fromProto(request.getRole()),
+                    request.getPageSize(),
+                    request.getPageOffset());
+            var response = ListEventRegistrationsResponse.newBuilder()
+                    .setHasMore(page.hasMore())
+                    .setNextPageOffset(page.nextPageOffset());
+            page.registrations().forEach(registration ->
+                    response.addRegistrations(toProto(registration)));
+            obs.onNext(response.build());
+            obs.onCompleted();
+        } catch (Exception e) {
+            obs.onError(ErrorMapper.map(e));
+        }
     }
 
     private void listRegistrations(String eventId, RegistrationRole role,

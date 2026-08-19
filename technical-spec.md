@@ -713,7 +713,7 @@ group their separate overlap/interest rows by event plus supply/card context.
   - `GET /api/v1/inventory/event/:event_id/search?card_id=…` (query-only; no list-all)
   - `GET/POST /api/v1/buylist`, `PUT/DELETE /api/v1/buylist/:id`,
     `GET /api/v1/buylist/event/:event_id` (browseable)
-  - `GET /api/v1/events`, `GET /api/v1/events/:id`,
+  - `GET /api/v1/events`, `GET /api/v1/events/registrations`, `GET /api/v1/events/:id`,
     `POST/DELETE /api/v1/events/:id/register`, `GET /api/v1/events/:id/vendors`
   - `GET /api/v1/overlaps/event/:event_id`,
     `GET /api/v1/overlaps/event/:event_id/saved`,
@@ -725,6 +725,10 @@ group their separate overlap/interest rows by event plus supply/card context.
 - `POST/PUT /api/v1/events` are intentionally not part of the vendor gateway surface.
   `product-spec.md` defers organizer event creation and editing to a later organizer UX;
   until then the operator uses the existing Event Service gRPC/admin path.
+- `GET /api/v1/events/registrations` is a paginated, caller-owned read. The gateway
+  derives both the user ID and vendor role from the verified JWT, then uses Event
+  Service's indexed registration query. Dashboard and event-list clients can therefore
+  reconcile registration state without probing every event roster.
 
 **Vendor Frontend (Next.js on Vercel)**
 - Mobile-first responsive design — conventions are a phone-in-hand context. Both desktop and mobile vendor layouts ship in this phase.

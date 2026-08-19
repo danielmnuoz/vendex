@@ -15,6 +15,7 @@ service EventService {
   rpc GetEvent(GetEventRequest) returns (GetEventResponse);
   rpc GetEventVendors(GetEventVendorsRequest) returns (GetEventRegistrationsResponse);
   rpc GetEventAttendees(GetEventAttendeesRequest) returns (GetEventRegistrationsResponse);
+  rpc ListEventRegistrationsForUser(ListEventRegistrationsForUserRequest) returns (ListEventRegistrationsResponse);
 }
 
 enum RegistrationRole {
@@ -105,3 +106,16 @@ message GetEventResponse { Event event = 1; }
 message GetEventVendorsRequest { string event_id = 1; }
 message GetEventAttendeesRequest { string event_id = 1; }
 message GetEventRegistrationsResponse { repeated EventRegistration registrations = 1; }
+
+message ListEventRegistrationsForUserRequest {
+  string user_id = 1;
+  RegistrationRole role = 2;
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+
+message ListEventRegistrationsResponse {
+  repeated EventRegistration registrations = 1;
+  int32 next_page_offset = 2;
+  bool has_more = 3;
+}

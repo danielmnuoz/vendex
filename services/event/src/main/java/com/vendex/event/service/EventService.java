@@ -158,6 +158,33 @@ public class EventService {
         return repository.listRegistrations(eventId, role);
     }
 
+    public RegistrationPage listRegistrationsForUser(
+            UUID userId,
+            RegistrationRole role,
+            int requestedPageSize,
+            int offset) {
+        requireId(userId, "user_id");
+        if (role == null) {
+            throw new EventExceptions.ValidationException("registration role is required");
+        }
+        if (offset < 0) {
+            throw new EventExceptions.ValidationException("page_offset must not be negative");
+        }
+        int pageSize = requestedPageSize <= 0
+                ? DEFAULT_PAGE_SIZE
+                : Math.min(requestedPageSize, MAX_PAGE_SIZE);
+        List<EventRegistration> rows = repository.listRegistrationsForUser(
+                userId, role, pageSize + 1, offset);
+        boolean hasMore = rows.size() > pageSize;
+        List<EventRegistration> registrations = hasMore
+                ? new ArrayList<>(rows.subList(0, pageSize))
+                : new ArrayList<>(rows);
+        return new RegistrationPage(
+                List.copyOf(registrations),
+                hasMore ? offset + pageSize : 0,
+                hasMore);
+    }
+
     private static void validateEvent(UUID organizerId, String name, String city, String state,
                                       String venue, LocalDate startDate, LocalDate endDate) {
         requireId(organizerId, "organizer_id");
@@ -204,4 +231,9 @@ public class EventService {
     }
 
     public record Page(List<Event> events, int nextPageOffset, boolean hasMore) {}
+
+    public record RegistrationPage(
+            List<EventRegistration> registrations,
+            int nextPageOffset,
+            boolean hasMore) {}
 }
