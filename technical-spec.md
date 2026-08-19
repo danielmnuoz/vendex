@@ -246,7 +246,7 @@ docker compose down
   - RS256 signing (asymmetric — private key signs, public key verifies)
   - Claims: user_id, role, issued_at, expires_at, kid (key ID used for signing)
   - Public keys exposed via a JWKS-style gRPC endpoint so other services can validate tokens independently without calling Auth Service on every request
-  - Key rotation: at any given time exactly one signing key is active for new tokens; previously-active keys remain in the JWKS response until their issued tokens expire. With a 15-minute access token + 7-day refresh token, a rotated key must remain published for the full 7-day overlap window before it can be removed.
+  - Key rotation: at any given time exactly one signing key is active for new tokens; previously-active keys remain in the JWKS response until their issued tokens expire. Rotation is an atomic PostgreSQL transaction: a transaction-scoped advisory lock serializes the empty-table/bootstrap case, `SELECT ... FOR UPDATE` locks the current active row, and the old-key update plus replacement insert commit or roll back together. Callers rotate an expected `kid`, so concurrent requests that observed the same signer produce one replacement rather than rotating the winner again. With a 15-minute access token + 7-day refresh token, a rotated key must remain published for the full 7-day overlap window before it can be removed.
 - gRPC endpoints:
   - `Register(email, password, role)` → user_id
   - `Login(email, password)` → access_token, refresh_token

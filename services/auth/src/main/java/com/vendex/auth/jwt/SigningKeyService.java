@@ -12,6 +12,7 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
@@ -25,6 +26,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Clock;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -47,20 +49,64 @@ public class SigningKeyService {
     private final SigningKeyRepository repository;
     private final Aead aead;
     private final Clock clock;
+    private final TransactionTemplate transactions;
 
-    public SigningKeyService(SigningKeyRepository repository, Aead aead, Clock clock) {
+    public SigningKeyService(
+            SigningKeyRepository repository,
+            Aead aead,
+            Clock clock,
+            TransactionTemplate transactions) {
         this.repository = repository;
         this.aead = aead;
         this.clock = clock;
+        this.transactions = transactions;
     }
 
     @PostConstruct
     void ensureActiveKey() {
-        if (repository.findActive().isEmpty()) {
+        ActivationResult result = inTransaction(() -> {
+            repository.acquireRotationLock();
+            Optional<SigningKey> active = repository.findActiveForUpdate();
+            if (active.isPresent()) {
+                return new ActivationResult(active.get(), Activation.UNCHANGED);
+            }
             log.info("No active signing key found, generating one");
-            SigningKey generated = generateNewSigningKey();
-            log.info("Generated signing key {} ({})", generated.id(), generated.alg());
+            return new ActivationResult(generateAndInsert(), Activation.CREATED);
+        });
+        if (result.activation() == Activation.CREATED) {
+            log.info("Generated signing key {} ({})", result.activeKey().id(), result.activeKey().alg());
         }
+    }
+
+    /**
+     * Atomically replaces {@code expectedKid} if it is still the active
+     * signer. Concurrent callers that observed the same key serialize on the
+     * database lock: the first rotates it, while later callers return the
+     * winner without generating or inserting another keypair.
+     */
+    public ActivationResult rotateSigningKey(UUID expectedKid) {
+        Objects.requireNonNull(expectedKid, "expectedKid");
+        ActivationResult result = inTransaction(() -> {
+            repository.acquireRotationLock();
+            SigningKey active = repository.findActiveForUpdate()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "no active signing key — bootstrap required"));
+            if (!active.id().equals(expectedKid)) {
+                return new ActivationResult(active, Activation.UNCHANGED);
+            }
+
+            SigningKey replacement = generateKeyMaterialThenReplace(active);
+            return new ActivationResult(replacement, Activation.ROTATED);
+        });
+        if (result.activation() == Activation.UNCHANGED) {
+            log.info(
+                    "Signing key rotation skipped because kid={} is no longer active; current kid={}",
+                    expectedKid,
+                    result.activeKey().id());
+        } else {
+            log.info("Rotated signing key from {} to {}", expectedKid, result.activeKey().id());
+        }
+        return result;
     }
 
     /** Returns the current signer's keypair (kid + RSA private key). */
@@ -94,21 +140,42 @@ public class SigningKeyService {
      * a ciphertext blob copied into a different row will fail to decrypt —
      * defense in depth against blob-swap attacks at the database layer.
      */
-    public SigningKey generateNewSigningKey() {
+    private SigningKey generateAndInsert() {
+        KeyMaterial material = generateKeyMaterial();
+        return repository.insert(
+                material.id(), material.publicPem(), material.encryptedPrivate(), ALG);
+    }
+
+    private SigningKey generateKeyMaterialThenReplace(SigningKey active) {
+        try {
+            KeyMaterial material = generateKeyMaterial();
+            repository.markRotated(active.id(), clock.instant());
+            return repository.insert(
+                    material.id(), material.publicPem(), material.encryptedPrivate(), ALG);
+        } catch (Exception e) {
+            throw new IllegalStateException("failed to rotate signing key", e);
+        }
+    }
+
+    private KeyMaterial generateKeyMaterial() {
         try {
             KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
             gen.initialize(RSA_KEY_SIZE);
             KeyPair pair = gen.generateKeyPair();
-
             String publicPem = toPem("PUBLIC KEY", pair.getPublic().getEncoded());
-            byte[] privatePem = toPem("PRIVATE KEY", pair.getPrivate().getEncoded()).getBytes(StandardCharsets.UTF_8);
-
+            byte[] privatePem = toPem("PRIVATE KEY", pair.getPrivate().getEncoded())
+                    .getBytes(StandardCharsets.UTF_8);
             UUID id = UUID.randomUUID();
-            byte[] encryptedPrivate = aead.encrypt(privatePem, uuidBytes(id));
-            return repository.insert(id, publicPem, encryptedPrivate, ALG);
+            return new KeyMaterial(id, publicPem, aead.encrypt(privatePem, uuidBytes(id)));
         } catch (Exception e) {
             throw new IllegalStateException("failed to generate signing key", e);
         }
+    }
+
+    private ActivationResult inTransaction(java.util.function.Supplier<ActivationResult> work) {
+        return Objects.requireNonNull(
+                transactions.execute(status -> work.get()),
+                "signing-key transaction returned no result");
     }
 
     private RSAPrivateKey decryptPrivateKey(SigningKey key) {
@@ -166,4 +233,14 @@ public class SigningKeyService {
     }
 
     public record ActiveSigner(UUID kid, RSAPrivateKey privateKey) {}
+
+    public enum Activation {
+        CREATED,
+        ROTATED,
+        UNCHANGED
+    }
+
+    public record ActivationResult(SigningKey activeKey, Activation activation) {}
+
+    private record KeyMaterial(UUID id, String publicPem, byte[] encryptedPrivate) {}
 }
