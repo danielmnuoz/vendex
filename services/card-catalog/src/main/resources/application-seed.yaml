@@ -11,3 +11,7 @@ spring:
 grpc:
   server:
     enabled: false
+
+card-catalog:
+  sync:
+    enabled: false

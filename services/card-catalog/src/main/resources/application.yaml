@@ -26,6 +26,8 @@ grpc:
 card-catalog:
   tcgdex:
     base-url: ${CARD_CATALOG_TCGDEX_BASE_URL:https://api.tcgdex.net/v2/en}
+    connect-timeout: ${CARD_CATALOG_TCGDEX_CONNECT_TIMEOUT:PT5S}
+    read-timeout: ${CARD_CATALOG_TCGDEX_READ_TIMEOUT:PT20S}
   cache:
     enabled: ${CARD_CATALOG_CACHE_ENABLED:true}
     ttl: ${CARD_CATALOG_CACHE_TTL:PT1H}          # ISO-8601 duration: 1 hour
@@ -36,6 +38,11 @@ card-catalog:
     max-sets: ${CARD_CATALOG_SEED_MAX_SETS:0}    # 0 = walk every set
     dry-run: ${CARD_CATALOG_SEED_DRY_RUN:false}
     enrich-series: ${CARD_CATALOG_SEED_ENRICH_SERIES:true}
+  sync:
+    enabled: ${CARD_CATALOG_SYNC_ENABLED:true}
+    initial-delay: ${CARD_CATALOG_SYNC_INITIAL_DELAY:PT1M}
+    interval: ${CARD_CATALOG_SYNC_INTERVAL:PT24H}
+    lease-duration: ${CARD_CATALOG_SYNC_LEASE_DURATION:PT2H}
 
 logging:
   level:

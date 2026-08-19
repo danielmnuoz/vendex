@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -202,6 +203,7 @@ public class CardRepository {
      * Batch upsert. Returns the resulting Card rows in the same order they
      * were upserted, so callers (mainly tests + dry-run counts) can correlate.
      */
+    @Transactional
     public List<Card> upsertAll(Collection<CardSeed> seeds) {
         List<Card> out = new ArrayList<>(seeds.size());
         for (CardSeed seed : seeds) {

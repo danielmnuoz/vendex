@@ -35,10 +35,13 @@ class CardServiceTest {
         repo = mock(CardRepository.class);
         cache = new FakeCardCache();
         CardCatalogProperties props = new CardCatalogProperties(
-                new CardCatalogProperties.Tcgdex("http://unused"),
+                new CardCatalogProperties.Tcgdex(
+                        "http://unused", Duration.ofSeconds(1), Duration.ofSeconds(1)),
                 new CardCatalogProperties.Cache(true, Duration.ofMinutes(5)),
                 new CardCatalogProperties.Search(25, 100),
-                new CardCatalogProperties.Seed(0, false, true)
+                new CardCatalogProperties.Seed(0, false, true),
+                new CardCatalogProperties.Sync(
+                        true, Duration.ofMinutes(1), Duration.ofDays(1), Duration.ofHours(2))
         );
         service = new CardService(repo, cache, props);
     }

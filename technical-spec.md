@@ -223,7 +223,9 @@ docker compose down
 ### Deliverables
 
 **Card Catalog Service (Java + Spring Boot + gRPC)**
-- Syncs card data from TCGdex into a local PostgreSQL table via a one-time seed CLI (`services/card-catalog/.../SeedCardsCli.java`, runnable via `mvn exec:java`) run per environment. All user-facing reads go through our local Postgres + Redis — the external API is never on the request path.
+- Refreshes card data from TCGdex into a local PostgreSQL table on a configurable fixed-delay schedule. The service fetches and validates a complete upstream snapshot before beginning an all-or-nothing transactional upsert; an empty or incomplete snapshot fails without a partial write. All user-facing reads go through local Postgres + Redis — the external API is never on the request path.
+- Coordinates scheduled runs across replicas with a crash-expiring PostgreSQL lease. The same state row records the last start, success, failure, card count, and bounded error text so failed refreshes are visible and safely retryable. HTTP connect/read timeouts prevent an unresponsive upstream from occupying the lease indefinitely.
+- Retains the `seed` Spring profile as an explicit one-off operator path for smoke tests and controlled environment bootstrap. Scheduled synchronization is disabled under that profile so the two workflows never race.
 - Normalizes cards into a canonical schema: card ID, name, set, set series, rarity, image URL, release date.
 - Redis cache layer for frequent lookups (cards don't change often — high cache hit rate).
 - gRPC endpoints:
@@ -231,7 +233,7 @@ docker compose down
   - `GetCardById(card_id)` → single card
   - `GetCardsByIds(card_ids)` → batch lookup
   - `ListSets()` → all available sets
-- Re-sync (when new Pokemon sets release, ~quarterly) is deferred. Phase 1 ships the seed script only; the cron job or admin-gated `SyncCards` endpoint is tracked as a follow-up issue.
+- An admin-gated manual trigger and production alerting remain follow-ups; automatic refresh itself is part of the service runtime.
 
 **Auth Service (Java + Spring Boot + gRPC + Self-Managed JWT)**
 - Registration: email + password. Password hashed with bcrypt.
@@ -282,6 +284,19 @@ The message broker (Redpanda, Kafka API-compatible, single-binary, no Zookeeper)
 | release_date | DATE | |
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
+
+**card_catalog_db.catalog_sync_state**
+| Column | Type | Notes |
+|---|---|---|
+| source | VARCHAR | Primary key; currently `tcgdex` |
+| lease_owner | UUID | Nullable owner token for the active scheduled run |
+| lease_expires_at | TIMESTAMPTZ | Crash-expiry boundary for cross-replica exclusion |
+| last_started_at | TIMESTAMPTZ | Most recent acquired run |
+| last_completed_at | TIMESTAMPTZ | Most recent successful run |
+| last_failed_at | TIMESTAMPTZ | Most recent failed run |
+| last_card_count | INTEGER | Rows presented to the last successful upsert |
+| last_error | TEXT | Bounded diagnostic from the most recent failure |
+| updated_at | TIMESTAMPTZ | Last state transition |
 
 **auth_db.users**
 | Column | Type | Notes |

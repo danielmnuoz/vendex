@@ -17,7 +17,7 @@ implementation moves faster.
 ## Current product surface
 
 - Vendor registration, login, profile, and rotating server-managed sessions
-- Canonical Pokémon card catalog search and batched card hydration
+- Automatically refreshed canonical Pokémon card catalog, search, and batched hydration
 - Inventory CRUD and reviewed CSV import with fuzzy-match corrections
 - Buy-list CRUD
 - Event browse, vendor registration, and authorized roster views

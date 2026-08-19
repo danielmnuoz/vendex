@@ -17,8 +17,8 @@ import java.util.Map;
 
 /**
  * Walks TCGdex and upserts every card into the local catalog. Runs only
- * under the {@code seed} Spring profile so the regular service start-up
- * never touches the network:
+ * under the {@code seed} Spring profile as an operator-controlled alternative
+ * to the regular service's automatic scheduled refresh:
  *
  * <pre>
  * java -jar card-catalog-exec.jar --spring.profiles.active=seed \

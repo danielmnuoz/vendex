@@ -13,6 +13,8 @@ import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -23,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Verifies the SQL the repository depends on against a real Postgres:
@@ -155,6 +158,19 @@ class CardRepositoryIT {
         assertThat(repo.findByIds(List.of(stored.id())))
                 .extracting(Card::id)
                 .containsExactly(stored.id());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void batchUpsertRollsBackEveryRowWhenOneRowIsInvalid() {
+        CardSeed valid = seedFor("valid", "Pikachu");
+        CardSeed invalid = new CardSeed(
+                null, "Broken", "sv03", "Some Set", null, null, null, null, null);
+
+        assertThatThrownBy(() -> repo.upsertAll(List.of(valid, invalid)))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cards", Integer.class)).isZero();
     }
 
     private static CardSeed seedFor(String externalId, String name) {
