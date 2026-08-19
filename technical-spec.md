@@ -737,13 +737,30 @@ group their separate overlap/interest rows by event plus supply/card context.
   each request at 100 IDs.
 
 **Vendor Frontend (Next.js on Vercel)**
+- **Implemented application boundary:** Next.js 16 App Router with a server-only
+  backend-for-frontend. Access and refresh tokens live in secure `HttpOnly` cookies;
+  authenticated browser calls use a same-origin, allowlisted Route Handler that adds
+  the bearer token, refreshes once after expiry, and relays only bounded gateway paths.
+  Proxy redirects protect vendor pages without treating cookie presence as authorization.
+- **Implemented responsive product:** landing, signup/login, dashboard, inventory and
+  four-step CSV resolution, buy list, event browse/registration/roster, event-scoped
+  opportunities and saved plans, notification feed, and profile/preference settings.
+  Existing records hydrate card details in batches of at most 100 through the gateway.
+  The UI directly consumes `ui/tokens.css` and follows the desktop/mobile layouts in
+  `ui/vendex.pen`.
+- **Implemented frontend quality gate:** pull requests install from the npm lockfile,
+  lint, run Vitest/Testing Library regressions, type-check during the Next production
+  build, and generate all application routes.
 - Mobile-first responsive design — conventions are a phone-in-hand context. Both desktop and mobile vendor layouts ship in this phase.
 - **Vendor signup + profile setup:** email, password, shop name, display handle, city/state. Onboarding pitches "register for an event" and "import inventory" as the two primary first actions.
 - **Vendor dashboard:** stat tiles, opportunities panel, upcoming events, notification feed; event-scoped views.
 - **Inventory manager:** CRUD UI + the four-step CSV import flow (file picker → fuzzy-match resolution → preview → commit).
 - **Buy list manager:** CRUD interface.
 - **Events:** browse upcoming events, register/unregister, view per-event vendor roster + counts.
-- **Overlap detail:** event-scoped view with the all-can-bid conversation state. Pre-event CTA is "Save to Event Plan"; in-event CTA is "Reveal Booth & Contact" via the Offer Service's `RevealBoothToVendor` endpoint.
+- **Overlap detail:** event-scoped opportunities and saved plans ship now. Pre-event CTA
+  is "Save to Event Plan". "Reveal Booth & Contact" is deliberately visible but disabled
+  until the Offer-owned audited reveal contract lands; the frontend does not bypass the
+  privacy boundary by reading booth data directly.
 - **Notifications:** feed view and preferences page (channels, triggers, digest mode, per-event mutes).
 - **No attendee flow yet.** No anonymous listings, no offer submission, no attendee mobile screens. Those land in Phase 5.
 - Hosted on Vercel free tier (Hobby plan).

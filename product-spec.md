@@ -197,7 +197,7 @@ The product is built in two halves: **vendor-vendor first** (Phases 1-4), then *
 
 ### Phase 4 Features (Vendor Frontend + API Gateway)
 
-This is where the vendor-vendor product becomes usable end-to-end. End of Phase 4 = a vendor can sign up, import inventory, register for an event, see overlaps, and reveal booth info to a counterparty — all through a real web app.
+This is where the vendor-vendor product becomes usable end-to-end. End of the initial Phase 4 frontend = a vendor can sign up, import inventory, register for an event, see overlaps, and save an event plan through a real web app. Booth/contact reveal remains behind the Offer Service privacy boundary and is not enabled until its audited contract exists.
 
 - API Gateway: REST → gRPC translation for auth, card catalog, inventory, buy list, events, overlaps, notifications, vendor profile.
 - Vendor web app (mobile-first responsive):
@@ -205,7 +205,7 @@ This is where the vendor-vendor product becomes usable end-to-end. End of Phase 
   - Inventory manager: CRUD + CSV import with fuzzy-match resolution
   - Buy list manager
   - Event browse + registration
-  - Overlap detail with conversation state and pre-event vs in-event CTAs
+  - Event-scoped overlap view and saved event plan; the in-event booth/contact CTA stays disabled until the Offer Service owns the reveal
   - Notification feed + preferences
   - Vendor signup + profile setup
 - Soft launch with a handful of real vendors. No attendee flow yet.
