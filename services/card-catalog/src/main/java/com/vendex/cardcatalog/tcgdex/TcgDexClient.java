@@ -1,8 +1,6 @@
 package com.vendex.cardcatalog.tcgdex;
 
 import com.vendex.cardcatalog.domain.CardSeed;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
@@ -11,11 +9,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Thin wrapper over the TCGdex public REST API (https://api.tcgdex.net/v2/en).
- * Used only by the seed pipeline — never on the request path.
+ * Used by the one-off seed profile and scheduled catalog refresh — never on
+ * the user request path.
  *
  * <p>The API is documented at https://tcgdex.dev/. We hit:
  * <ul>
@@ -29,8 +27,6 @@ import java.util.Objects;
  * {@code <base>/high.png} and {@code <base>/low.png}.
  */
 public class TcgDexClient {
-
-    private static final Logger log = LoggerFactory.getLogger(TcgDexClient.class);
 
     private final RestClient http;
 
@@ -73,18 +69,15 @@ public class TcgDexClient {
         }
         List<CardSeed> out = new ArrayList<>();
         for (SetStub stub : sets) {
-            try {
-                SetDetail set = getSet(stub.id());
-                if (set == null || set.cards() == null) {
-                    continue;
-                }
-                String seriesName = seriesNameById == null ? null
-                        : (set.serie() == null ? null : seriesNameById.get(set.serie().id()));
-                for (CardStub card : set.cards()) {
-                    out.add(toSeed(card, set, seriesName));
-                }
-            } catch (Exception e) {
-                log.warn("skipping set {} (fetch failed): {}", stub.id(), e.getMessage());
+            String setId = requireText(stub.id(), "set id");
+            SetDetail set = getSet(setId);
+            if (set == null || set.cards() == null) {
+                throw new IllegalStateException("TCGdex returned incomplete set detail for " + setId);
+            }
+            String seriesName = seriesNameById == null ? null
+                    : (set.serie() == null ? null : seriesNameById.get(set.serie().id()));
+            for (CardStub card : set.cards()) {
+                out.add(toSeed(card, set, seriesName));
             }
         }
         return out;
@@ -105,16 +98,23 @@ public class TcgDexClient {
         String low = base == null ? null : base + "/low.png";
         String high = base == null ? null : base + "/high.png";
         return new CardSeed(
-                card.id(),
-                Objects.requireNonNullElse(card.name(), ""),
-                set.id(),
-                Objects.requireNonNullElse(set.name(), ""),
+                requireText(card.id(), "card id"),
+                requireText(card.name(), "card name"),
+                requireText(set.id(), "set id"),
+                requireText(set.name(), "set name"),
                 seriesName,
                 card.rarity(),
                 low,
                 high,
                 parseDate(set.releaseDate())
         );
+    }
+
+    private static String requireText(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("TCGdex returned a blank " + field);
+        }
+        return value;
     }
 
     private static LocalDate parseDate(String iso) {
@@ -130,7 +130,9 @@ public class TcgDexClient {
 
     // --- DTOs. Public so Jackson can construct them via canonical record constructors. ---
 
-    public record SetStub(String id, String name, Integer cardCount) {}
+    public record SetStub(String id, String name, CardCount cardCount) {}
+
+    public record CardCount(Integer total, Integer official) {}
 
     public record SetDetail(
             String id,

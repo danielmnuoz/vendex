@@ -13,13 +13,20 @@ public record CardCatalogProperties(
         Tcgdex tcgdex,
         Cache cache,
         Search search,
-        Seed seed
+        Seed seed,
+        Sync sync
 ) {
-    public record Tcgdex(String baseUrl) {}
+    public record Tcgdex(String baseUrl, Duration connectTimeout, Duration readTimeout) {}
 
     public record Cache(boolean enabled, Duration ttl) {}
 
     public record Search(int defaultPageSize, int maxPageSize) {}
 
     public record Seed(int maxSets, boolean dryRun, boolean enrichSeries) {}
+
+    public record Sync(
+            boolean enabled,
+            Duration initialDelay,
+            Duration interval,
+            Duration leaseDuration) {}
 }

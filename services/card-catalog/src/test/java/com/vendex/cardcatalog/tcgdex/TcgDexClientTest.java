@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TcgDexClientTest {
 
@@ -37,14 +38,15 @@ class TcgDexClientTest {
     void listSetsParsesArray() {
         server.enqueue(jsonOk("""
                 [
-                  {"id": "sv03", "name": "Obsidian Flames", "cardCount": 230},
-                  {"id": "sv04", "name": "Paradox Rift",    "cardCount": 266}
+                  {"id": "sv03", "name": "Obsidian Flames", "cardCount": {"total": 230, "official": 197}},
+                  {"id": "sv04", "name": "Paradox Rift",    "cardCount": {"total": 266, "official": 182}}
                 ]
                 """));
 
         List<TcgDexClient.SetStub> sets = client.listSets();
 
         assertThat(sets).extracting(TcgDexClient.SetStub::id).containsExactly("sv03", "sv04");
+        assertThat(sets.get(0).cardCount().total()).isEqualTo(230);
     }
 
     @Test
@@ -97,7 +99,7 @@ class TcgDexClientTest {
     }
 
     @Test
-    void brokenSetIsSkippedNotFatal() {
+    void brokenSetFailsTheWholeSnapshot() {
         server.enqueue(jsonOk("""
                 [{"id": "good", "name": "OK"}, {"id": "bad", "name": "Bad"}]
                 """));
@@ -107,12 +109,12 @@ class TcgDexClientTest {
                     {"id": "good-1", "name": "X", "image": "https://x/img"}
                 ]}
                 """));
-        // Second set returns 500 — should be logged and skipped.
+        // Second set returns 500. The caller must receive the failure so no
+        // partially fetched snapshot can reach the transaction boundary.
         server.enqueue(new MockResponse().setResponseCode(500));
 
-        List<CardSeed> seeds = client.fetchAllSeeds(null, 0);
-
-        assertThat(seeds).extracting(CardSeed::externalId).containsExactly("good-1");
+        assertThatThrownBy(() -> client.fetchAllSeeds(null, 0))
+                .isInstanceOf(org.springframework.web.client.RestClientResponseException.class);
     }
 
     private static MockResponse jsonOk(String body) {

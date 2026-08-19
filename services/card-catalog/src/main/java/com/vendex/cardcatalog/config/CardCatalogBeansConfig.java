@@ -10,7 +10,10 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+
+import java.time.Clock;
 
 /**
  * Bean wiring that benefits from being explicit:
@@ -51,9 +54,18 @@ public class CardCatalogBeansConfig {
 
     @Bean
     public TcgDexClient tcgDexClient(CardCatalogProperties props) {
+        SimpleClientHttpRequestFactory requests = new SimpleClientHttpRequestFactory();
+        requests.setConnectTimeout(props.tcgdex().connectTimeout());
+        requests.setReadTimeout(props.tcgdex().readTimeout());
         RestClient http = RestClient.builder()
                 .baseUrl(props.tcgdex().baseUrl())
+                .requestFactory(requests)
                 .build();
         return new TcgDexClient(http);
+    }
+
+    @Bean
+    public Clock cardCatalogClock() {
+        return Clock.systemUTC();
     }
 }
