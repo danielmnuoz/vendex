@@ -684,7 +684,7 @@ group their separate overlap/interest rows by event plus supply/card context.
 - Request logging and error normalization.
 - **Implemented gateway foundation:** Spring Cloud Gateway Server MVC 4.2.0 on the
   Spring Cloud 2024.0.0 release train; public vendor register/login/refresh;
-  protected card search/detail/set reads; and self-owned vendor profile read/update.
+  protected card search/detail/batch/set reads; and self-owned vendor profile read/update.
   A correlation/security-header filter runs first, followed by a Redis sliding-window
   IP ceiling, local RS256 validation using cached Auth JWKS, and a second public-IP or
   authenticated-user rate window. Unknown `kid` values trigger one bounded JWKS
@@ -706,7 +706,8 @@ group their separate overlap/interest rows by event plus supply/card context.
   same roster snapshot. Each distinct profile lookup receives its own gRPC deadline.
 - Route structure (Phase 4 — vendor-only; attendee routes added in Phase 5):
   - `POST /api/v1/auth/register`, `/login`, `/refresh`
-  - `GET /api/v1/cards/search`, `/cards/:id`, `/sets`
+  - `GET /api/v1/cards/search`, `/cards/:id`, `/sets`,
+    `POST /api/v1/cards/batch` (1–100 canonical or external card IDs)
   - `GET/POST /api/v1/inventory` (optional self-owned `eventId` filter),
     `PUT/DELETE /api/v1/inventory/:id`,
     `POST /api/v1/inventory/import`
@@ -729,6 +730,11 @@ group their separate overlap/interest rows by event plus supply/card context.
   derives both the user ID and vendor role from the verified JWT, then uses Event
   Service's indexed registration query. Dashboard and event-list clients can therefore
   reconcile registration state without probing every event roster.
+- `POST /api/v1/cards/batch` exposes Card Catalog's existing ordered batch lookup
+  through the authenticated vendor boundary. It hydrates card IDs already present in
+  inventory, buy-list, overlap, and notification records without one REST request per
+  row. Unknown IDs are omitted, matching the internal contract, and the gateway caps
+  each request at 100 IDs.
 
 **Vendor Frontend (Next.js on Vercel)**
 - Mobile-first responsive design — conventions are a phone-in-hand context. Both desktop and mobile vendor layouts ship in this phase.

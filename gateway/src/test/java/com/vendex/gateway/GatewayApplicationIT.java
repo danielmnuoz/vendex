@@ -30,6 +30,8 @@ import com.vendex.cards.v1.Card;
 import com.vendex.cards.v1.CardCatalogServiceGrpc;
 import com.vendex.cards.v1.GetCardByIdRequest;
 import com.vendex.cards.v1.GetCardByIdResponse;
+import com.vendex.cards.v1.GetCardsByIdsRequest;
+import com.vendex.cards.v1.GetCardsByIdsResponse;
 import com.vendex.cards.v1.ListSetsRequest;
 import com.vendex.cards.v1.ListSetsResponse;
 import com.vendex.cards.v1.SearchCardsRequest;
@@ -67,7 +69,9 @@ import org.testcontainers.utility.DockerImageName;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -150,6 +154,26 @@ class GatewayApplicationIT {
         JsonNode cardsJson = objectMapper.readTree(cards.getBody());
         assertThat(cardsJson.get("cards").get(0).get("name").asText()).isEqualTo("Pikachu");
         assertThat(JWKS_CALLS).hasValue(1);
+
+        String cardId = cardsJson.get("cards").get(0).get("id").asText();
+        ResponseEntity<String> batch = rest.exchange(
+                url("/api/v1/cards/batch"),
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of("cardIds", List.of(cardId)), headers),
+                String.class);
+        assertThat(batch.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode batchJson = objectMapper.readTree(batch.getBody());
+        assertThat(batchJson.get("cards")).hasSize(1);
+        assertThat(batchJson.get("cards").get(0).get("name").asText()).isEqualTo("Pikachu");
+
+        ResponseEntity<String> oversizedBatch = rest.exchange(
+                url("/api/v1/cards/batch"),
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of("cardIds", Collections.nCopies(101, cardId)), headers),
+                String.class);
+        assertThat(oversizedBatch.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(objectMapper.readTree(oversizedBatch.getBody()).get("code").asText())
+                .isEqualTo("INVALID_REQUEST");
 
         ResponseEntity<String> profile = rest.exchange(
                 url("/api/v1/profile"), HttpMethod.GET, new HttpEntity<>(headers), String.class);
@@ -343,6 +367,16 @@ class GatewayApplicationIT {
                 return;
             }
             response.onNext(GetCardByIdResponse.newBuilder().setCard(card()).build());
+            response.onCompleted();
+        }
+
+        @Override
+        public void getCardsByIds(
+                GetCardsByIdsRequest request,
+                StreamObserver<GetCardsByIdsResponse> response) {
+            assertThat(request.getCardIdsList())
+                    .containsExactly("76c0477d-9b0a-45e2-851b-1403298b22ab");
+            response.onNext(GetCardsByIdsResponse.newBuilder().addCards(card()).build());
             response.onCompleted();
         }
 
