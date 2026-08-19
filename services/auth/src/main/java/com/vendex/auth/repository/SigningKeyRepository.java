@@ -4,6 +4,7 @@ import com.vendex.auth.domain.SigningKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -15,6 +16,8 @@ import java.util.UUID;
 
 @Repository
 public class SigningKeyRepository {
+
+    private static final long ROTATION_LOCK_ID = 0x56454E4445584B45L;
 
     private static final RowMapper<SigningKey> ROW_MAPPER = (rs, rowNum) -> new SigningKey(
             (UUID) rs.getObject("id"),
@@ -50,13 +53,26 @@ public class SigningKeyRepository {
     }
 
     public Optional<SigningKey> findActive() {
+        return findActive("");
+    }
+
+    /**
+     * Locks the current active row until the surrounding transaction ends.
+     * Call only after {@link #acquireRotationLock()} so the no-row bootstrap
+     * case is serialized too.
+     */
+    public Optional<SigningKey> findActiveForUpdate() {
+        return findActive(" FOR UPDATE");
+    }
+
+    private Optional<SigningKey> findActive(String lockingClause) {
         try {
             SigningKey k = jdbc.queryForObject(
                     """
                     SELECT id, public_key, private_key_encrypted, alg, created_at, rotated_at, revoked_at
                     FROM signing_keys
                     WHERE rotated_at IS NULL AND revoked_at IS NULL
-                    """,
+                    """ + lockingClause,
                     new MapSqlParameterSource(),
                     ROW_MAPPER
             );
@@ -64,6 +80,19 @@ public class SigningKeyRepository {
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
+    }
+
+    /**
+     * Serializes signing-key bootstrap and rotation for the life of the
+     * caller's transaction. A row lock cannot protect an empty table, so the
+     * transaction-scoped advisory lock closes that startup race.
+     */
+    public void acquireRotationLock() {
+        jdbc.query(
+                "SELECT pg_advisory_xact_lock(:lock_id)",
+                new MapSqlParameterSource("lock_id", ROTATION_LOCK_ID),
+                (ResultSetExtractor<Void>) rs -> null
+        );
     }
 
     public Optional<SigningKey> findById(UUID id) {
@@ -99,11 +128,14 @@ public class SigningKeyRepository {
 
     /** Marks a key as no longer the active signer. Used during rotation. */
     public void markRotated(UUID id, java.time.Instant when) {
-        jdbc.update(
+        int changed = jdbc.update(
                 "UPDATE signing_keys SET rotated_at = :when WHERE id = :id AND rotated_at IS NULL",
                 new MapSqlParameterSource()
                         .addValue("id", id)
                         .addValue("when", Timestamp.from(when))
         );
+        if (changed != 1) {
+            throw new IllegalStateException("active signing key changed before rotation: kid=" + id);
+        }
     }
 }
