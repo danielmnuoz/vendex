@@ -3,6 +3,7 @@ package com.vendex.gateway.api;
 import com.vendex.cards.v1.Card;
 import com.vendex.cards.v1.CardCatalogServiceGrpc;
 import com.vendex.cards.v1.GetCardByIdRequest;
+import com.vendex.cards.v1.GetCardsByIdsRequest;
 import com.vendex.cards.v1.ListSetsRequest;
 import com.vendex.cards.v1.SearchCardsRequest;
 import com.vendex.cards.v1.SetSummary;
@@ -10,13 +11,18 @@ import com.vendex.gateway.auth.GatewayPrincipal;
 import com.vendex.gateway.auth.GatewayRole;
 import com.vendex.gateway.config.GatewayProperties;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,6 +42,19 @@ public class CardController {
             GatewayProperties properties) {
         this.cards = cards;
         this.properties = properties;
+    }
+
+    @PostMapping("/cards/batch")
+    CardBatchResponse batch(
+            HttpServletRequest request,
+            @Valid @RequestBody CardBatchBody body) {
+        requireVendor(request);
+        var response = stub().getCardsByIds(GetCardsByIdsRequest.newBuilder()
+                .addAllCardIds(body.cardIds())
+                .build());
+        return new CardBatchResponse(response.getCardsList().stream()
+                .map(CardController::map)
+                .toList());
     }
 
     @GetMapping("/cards/search")
@@ -101,6 +120,12 @@ public class CardController {
     }
 
     public record CardPage(List<CardResponse> cards, String nextPageToken) {}
+
+    public record CardBatchBody(
+            @NotEmpty @Size(max = 100)
+            List<@NotBlank @Size(max = 100) String> cardIds) {}
+
+    public record CardBatchResponse(List<CardResponse> cards) {}
 
     public record CardResponse(
             String id,
