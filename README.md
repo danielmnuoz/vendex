@@ -14,6 +14,9 @@ responsive Next.js vendor application. Each increment is recorded under
 `docs/learning/` so the architectural evolution remains reviewable after the
 implementation moves faster.
 
+For the exact implementation boundary, remaining work, and next-agent restart point,
+see [the 2026-08-18 project handoff](docs/learning/project-handoff-2026-08-18.md).
+
 ## Current product surface
 
 - Vendor registration, login, profile, and rotating server-managed sessions
