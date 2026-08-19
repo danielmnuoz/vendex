@@ -13,4 +13,5 @@ The frontend imports the repository-level `ui/tokens.css` file directly; do not 
 ## Validation
 
 - `npm run lint`
+- `npm test`
 - `npm run build`

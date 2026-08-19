@@ -27,6 +27,20 @@ export type EventSummary = {
   updatedAtEpochSeconds: number;
 };
 
+export type EventRegistration = {
+  id: string;
+  eventId: string;
+  userId: string;
+  role: string;
+  booth: string;
+  registeredAtEpochSeconds: number;
+  vendor: PublicVendor | null;
+};
+
+export type VendorRoster = {
+  vendors: EventRegistration[];
+};
+
 export type PublicVendor = {
   userId: string;
   shopName: string;
@@ -77,6 +91,22 @@ export type CardSummary = {
   releaseDate: string;
 };
 
+export type CardSearchResponse = {
+  cards: CardSummary[];
+  nextPageToken: string;
+};
+
+export type CardBatchResponse = {
+  cards: CardSummary[];
+};
+
+export type SetSummary = {
+  id: string;
+  name: string;
+  series: string;
+  cardCount: number;
+};
+
 export type Overlap = {
   id: string;
   eventId: string;
@@ -97,6 +127,26 @@ export type Overlap = {
   createdAtEpochSeconds: number;
   updatedAtEpochSeconds: number;
   counterparty: PublicVendor | null;
+};
+
+export type SavedOverlap = {
+  id: string;
+  vendorId: string;
+  overlap: Overlap;
+  createdAtEpochSeconds: number;
+};
+
+export type OverlapInterest = {
+  id: string;
+  overlapId: string;
+  interestedVendorId: string;
+  counterpartyVendorId: string;
+  eventId: string;
+  score: string;
+  status: string;
+  createdAtEpochSeconds: number;
+  updatedAtEpochSeconds: number;
+  interestedVendor: PublicVendor | null;
 };
 
 export type NotificationItem = {
@@ -124,4 +174,44 @@ export type NotificationPreferences = {
   digestMode: string;
   mutedEventIds: string[];
   updatedAtEpochSeconds: number;
+};
+
+export type UnreadCount = {
+  unreadCount: number;
+};
+
+export type ImportResolvedRow = {
+  rowNumber: number;
+  cardId: string;
+  cardName: string;
+  setName: string;
+  condition: string;
+  gradingCompany: string;
+  grade: string;
+  quantity: number;
+  askingPrice: string;
+  priority: string;
+  confidence: number;
+};
+
+export type ImportCandidate = {
+  cardId: string;
+  cardName: string;
+  setName: string;
+  confidence: number;
+};
+
+export type ImportIssue = {
+  rowNumber: number;
+  cardName: string;
+  setName: string;
+  reason: string;
+  candidates: ImportCandidate[];
+};
+
+export type ImportResponse = {
+  importedItems: InventoryItem[];
+  resolvedRows: ImportResolvedRow[];
+  issues: ImportIssue[];
+  committed: boolean;
 };

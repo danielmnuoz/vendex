@@ -1,22 +1,6 @@
 import { cookies } from "next/headers";
 import { callGateway, ACCESS_COOKIE, clearSession, refreshSession, relay, sameOrigin } from "@/lib/gateway";
-
-const allowedRoots = new Set([
-  "profile",
-  "cards",
-  "sets",
-  "inventory",
-  "buylist",
-  "events",
-  "overlaps",
-  "notifications",
-]);
-
-function validPath(segments: string[]) {
-  return segments.length > 0
-    && allowedRoots.has(segments[0])
-    && segments.every((segment) => /^[A-Za-z0-9_-]+$/.test(segment));
-}
+import { validProxyPath } from "@/lib/proxy-policy";
 
 async function forward(request: Request, segments: string[], accessToken: string) {
   const incoming = new URL(request.url);
@@ -40,7 +24,7 @@ async function handle(request: Request, context: RouteContext<"/api/proxy/[...pa
     return Response.json({ code: "CROSS_ORIGIN_REQUEST", message: "Request origin was rejected." }, { status: 403 });
   }
   const { path } = await context.params;
-  if (!validPath(path)) {
+  if (!validProxyPath(path)) {
     return Response.json({ code: "PROXY_ROUTE_REJECTED", message: "This gateway route is not exposed." }, { status: 404 });
   }
 

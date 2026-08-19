@@ -3,15 +3,14 @@ import { describe, expect, it } from "vitest";
 
 import Home from "./page";
 
-describe("dashboard preview", () => {
-  it("renders the vendor's next-show summary", () => {
+describe("marketing landing page", () => {
+  it("explains the event-scoped vendor workflow", () => {
     render(<Home />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Good afternoon, Taylor.",
+      "Find the right booth before the doors open.",
     );
-    expect(screen.getByRole("button", { name: /active event/i })).toHaveTextContent(
-      "Collect-A-Con Dallas",
-    );
+    expect(screen.getByRole("link", { name: /create your vendor account/i })).toHaveAttribute("href", "/signup");
+    expect(screen.getByRole("heading", { name: "Join the same event" })).toBeInTheDocument();
   });
 });
