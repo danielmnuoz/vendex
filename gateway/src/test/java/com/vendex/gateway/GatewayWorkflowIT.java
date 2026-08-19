@@ -38,6 +38,8 @@ import com.vendex.event.v1.GetEventResponse;
 import com.vendex.event.v1.GetEventVendorsRequest;
 import com.vendex.event.v1.ListEventsRequest;
 import com.vendex.event.v1.ListEventsResponse;
+import com.vendex.event.v1.ListEventRegistrationsForUserRequest;
+import com.vendex.event.v1.ListEventRegistrationsResponse;
 import com.vendex.event.v1.RegisterForEventRequest;
 import com.vendex.event.v1.RegisterForEventResponse;
 import com.vendex.event.v1.RegistrationRole;
@@ -191,6 +193,12 @@ class GatewayWorkflowIT {
                 "/api/v1/events/" + EVENT_ID + "/register", HttpMethod.POST, Map.of("booth", "A-17"));
         assertThat(registration.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(LAST_REGISTRATION_USER).hasValue(USER_ID);
+
+        JsonNode registrations = json(request(
+                "/api/v1/events/registrations", HttpMethod.GET, null));
+        assertThat(registrations.get("items")).hasSize(1);
+        assertThat(registrations.get("items").get(0).get("eventId").asText()).isEqualTo(EVENT_ID);
+        assertThat(registrations.get("items").get(0).get("userId").asText()).isEqualTo(USER_ID);
 
         JsonNode roster = json(request("/api/v1/events/" + EVENT_ID + "/vendors", HttpMethod.GET, null));
         assertThat(roster.get("vendors")).hasSize(2);
@@ -543,6 +551,16 @@ class GatewayWorkflowIT {
             }
             roster.addRegistrations(registration(request.getEventId(), OTHER_VENDOR_ID, "B-12"));
             response.onNext(roster.build());
+            response.onCompleted();
+        }
+
+        @Override
+        public void listEventRegistrationsForUser(
+                ListEventRegistrationsForUserRequest request,
+                StreamObserver<ListEventRegistrationsResponse> response) {
+            response.onNext(ListEventRegistrationsResponse.newBuilder()
+                    .addRegistrations(registration(EVENT_ID, request.getUserId(), "A-17"))
+                    .build());
             response.onCompleted();
         }
     }

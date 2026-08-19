@@ -5,6 +5,7 @@ import com.vendex.event.v1.EventRegistration;
 import com.vendex.event.v1.EventServiceGrpc;
 import com.vendex.event.v1.GetEventRequest;
 import com.vendex.event.v1.ListEventsRequest;
+import com.vendex.event.v1.ListEventRegistrationsForUserRequest;
 import com.vendex.event.v1.RegisterForEventRequest;
 import com.vendex.event.v1.RegistrationRole;
 import com.vendex.event.v1.UnregisterFromEventRequest;
@@ -73,6 +74,24 @@ public class EventController {
     EventResponse get(HttpServletRequest request, @PathVariable String eventId) {
         vendor(request);
         return map(stub().getEvent(GetEventRequest.newBuilder().setEventId(eventId).build()).getEvent());
+    }
+
+    @GetMapping("/registrations")
+    PageResponse<RegistrationResponse> registrations(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "25") @Min(1) @Max(100) int pageSize,
+            @RequestParam(defaultValue = "0") @Min(0) int pageOffset) {
+        GatewayPrincipal principal = vendor(request);
+        var response = stub().listEventRegistrationsForUser(
+                ListEventRegistrationsForUserRequest.newBuilder()
+                        .setUserId(principal.userId().toString())
+                        .setRole(RegistrationRole.REGISTRATION_ROLE_VENDOR)
+                        .setPageSize(pageSize)
+                        .setPageOffset(pageOffset)
+                        .build());
+        return new PageResponse<>(response.getRegistrationsList().stream()
+                .map(registration -> map(registration, null))
+                .toList(), response.getNextPageOffset(), response.getHasMore());
     }
 
     @PostMapping("/{eventId}/register")

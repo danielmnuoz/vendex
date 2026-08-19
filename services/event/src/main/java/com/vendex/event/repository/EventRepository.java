@@ -181,6 +181,24 @@ public class EventRepository {
         );
     }
 
+    public List<EventRegistration> listRegistrationsForUser(
+            UUID userId, RegistrationRole role, int limit, int offset) {
+        return jdbc.query(
+                """
+                SELECT * FROM event_registrations
+                WHERE user_id = :user_id AND role = :role
+                ORDER BY registered_at DESC, id ASC
+                LIMIT :limit OFFSET :offset
+                """,
+                new MapSqlParameterSource()
+                        .addValue("user_id", userId)
+                        .addValue("role", role.name().toLowerCase())
+                        .addValue("limit", limit)
+                        .addValue("offset", offset),
+                REGISTRATION_MAPPER
+        );
+    }
+
     private static MapSqlParameterSource eventParams(
             UUID organizerId, String name, String city, String state, String venue,
             LocalDate startDate, LocalDate endDate, String description, Instant now) {

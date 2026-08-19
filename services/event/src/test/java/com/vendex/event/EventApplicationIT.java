@@ -3,6 +3,8 @@ package com.vendex.event;
 import com.vendex.event.grpc.EventGrpcService;
 import com.vendex.event.v1.CreateEventRequest;
 import com.vendex.event.v1.CreateEventResponse;
+import com.vendex.event.v1.ListEventRegistrationsForUserRequest;
+import com.vendex.event.v1.ListEventRegistrationsResponse;
 import com.vendex.event.v1.RegisterForEventRequest;
 import com.vendex.event.v1.RegisterForEventResponse;
 import com.vendex.event.v1.RegistrationRole;
@@ -93,6 +95,22 @@ class EventApplicationIT {
                             .setBooth("B-7")
                             .build(), obs));
             assertThat(registered.getRegistration().getBooth()).isEqualTo("B-7");
+
+            ListEventRegistrationsResponse registrations = invoke(obs ->
+                    grpc.listEventRegistrationsForUser(
+                            ListEventRegistrationsForUserRequest.newBuilder()
+                                    .setUserId(vendorId.toString())
+                                    .setRole(RegistrationRole.REGISTRATION_ROLE_VENDOR)
+                                    .setPageSize(25)
+                                    .build(), obs));
+            assertThat(registrations.getRegistrationsList())
+                    .singleElement()
+                    .satisfies(item -> {
+                        assertThat(item.getEventId()).isEqualTo(eventId.toString());
+                        assertThat(item.getUserId()).isEqualTo(vendorId.toString());
+                        assertThat(item.getRole()).isEqualTo(RegistrationRole.REGISTRATION_ROLE_VENDOR);
+                    });
+            assertThat(registrations.getHasMore()).isFalse();
 
             var received = new java.util.ArrayList<org.apache.kafka.clients.consumer.ConsumerRecord<String, String>>();
             long deadline = System.nanoTime() + Duration.ofSeconds(20).toNanos();

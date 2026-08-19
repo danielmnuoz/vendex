@@ -210,6 +210,23 @@ class EventServiceTest {
     }
 
     @Test
+    void userRegistrationListIsRoleScopedAndUsesOneExtraRowForPagination() {
+        UUID vendorId = UUID.randomUUID();
+        EventRegistration first = registration(vendorId, RegistrationRole.VENDOR);
+        EventRegistration second = registration(vendorId, RegistrationRole.VENDOR);
+        EventRegistration third = registration(vendorId, RegistrationRole.VENDOR);
+        when(repository.listRegistrationsForUser(vendorId, RegistrationRole.VENDOR, 3, 10))
+                .thenReturn(List.of(first, second, third));
+
+        EventService.RegistrationPage page = service().listRegistrationsForUser(
+                vendorId, RegistrationRole.VENDOR, 2, 10);
+
+        assertThat(page.registrations()).containsExactly(first, second);
+        assertThat(page.hasMore()).isTrue();
+        assertThat(page.nextPageOffset()).isEqualTo(12);
+    }
+
+    @Test
     void rejectsBackwardsDateRangeBeforeWriting() {
         assertThatThrownBy(() -> service().create(
                 UUID.randomUUID(), "Show", "Dallas", "TX", null,
@@ -236,5 +253,10 @@ class EventServiceTest {
                 UUID.randomUUID(), organizerId, "Collect-A-Con Dallas", "Dallas", "TX",
                 "Convention Center", LocalDate.of(2026, 10, 3), LocalDate.of(2026, 10, 4),
                 "Pokemon weekend", NOW, NOW);
+    }
+
+    private static EventRegistration registration(UUID userId, RegistrationRole role) {
+        return new EventRegistration(
+                UUID.randomUUID(), UUID.randomUUID(), userId, role, "B-7", NOW);
     }
 }
