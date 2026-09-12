@@ -155,6 +155,21 @@ class CardServiceTest {
         void emptyInputReturnsEmpty() {
             assertThat(service.getByIds(List.of())).isEmpty();
         }
+
+        @Test
+        void allCanonicalUuidsSkipCacheAndLoadFromRepo() {
+            // Regression: the gateway's /cards/batch sends only canonical UUIDs, so the
+            // external-id list is empty and the cache returns an immutable Map.of().
+            // getByIds used to mutate that map and throw UnsupportedOperationException.
+            Card a = sample("sv03-001");
+            Card b = sample("sv03-002");
+            when(repo.findByIds(List.of(a.id(), b.id()))).thenReturn(List.of(b, a));
+
+            List<Card> got = service.getByIds(List.of(a.id().toString(), b.id().toString()));
+
+            assertThat(got).containsExactly(a, b);
+            verify(repo, never()).findByExternalIds(any());
+        }
     }
 
     @Nested

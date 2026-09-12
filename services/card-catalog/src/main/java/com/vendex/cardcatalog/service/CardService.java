@@ -79,7 +79,9 @@ public class CardService {
             }
         }
 
-        Map<String, Card> hits = cache.getMany(externalIds);
+        // Copy: cache implementations may return immutable maps (e.g. Map.of() when
+        // externalIds is empty, which is the common all-canonical-UUID case).
+        Map<String, Card> hits = new LinkedHashMap<>(cache.getMany(externalIds));
         List<String> missing = new ArrayList<>();
         for (String id : externalIds) {
             if (!hits.containsKey(id)) {

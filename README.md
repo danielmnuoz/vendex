@@ -43,5 +43,15 @@ npm install
 npm run dev
 ```
 
+Copy `frontend/.env.example` to `frontend/.env.local` so the BFF can reach the
+gateway on port 8081. To load a demo dataset (two events, five vendors with
+inventory and buy lists that produce overlaps), run the seed script against the
+running stack; it goes through the gateway and the Event gRPC API so the outbox
+and overlap engine see the writes:
+
+```bash
+node scripts/seed/seed-dev.mjs
+```
+
 Backend validation is `mvn verify`. Frontend validation is `npm run lint`,
 `npm test`, and `npm run build` from `frontend/`.

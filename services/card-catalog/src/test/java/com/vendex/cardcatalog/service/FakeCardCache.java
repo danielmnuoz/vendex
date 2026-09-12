@@ -37,7 +37,8 @@ public class FakeCardCache implements CardCache {
                 out.put(id, c);
             }
         }
-        return out;
+        // Immutable, like RedisCardCache/NoopCardCache: callers must not mutate the result.
+        return Map.copyOf(out);
     }
 
     @Override
