@@ -1,0 +1,163 @@
+/* Floating variant switcher (lab only). */
+.switcher {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 50;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-panel);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-navy) 18%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+.switcher button {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-fg-mid);
+  font: inherit;
+  cursor: pointer;
+}
+.switcher button.on { background: var(--color-fg); color: var(--color-bg-panel); }
+
+/* Tone panel (lab only) — sits above the variant switcher. */
+.tonePanel {
+  position: fixed;
+  right: 18px;
+  bottom: 70px;
+  z-index: 50;
+  display: grid;
+  gap: 8px;
+  width: 260px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-panel);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-navy) 18%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+}
+.toneRow { display: flex; gap: 4px; }
+.toneRow button {
+  flex: 1;
+  padding: 5px 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-fg-mid);
+  font: inherit;
+  cursor: pointer;
+}
+.toneRow button.on { border-color: var(--color-fg); background: var(--color-fg); color: var(--color-bg-panel); }
+.toneSlider { display: grid; grid-template-columns: 5.5rem 1fr 2.4rem; align-items: center; gap: 8px; color: var(--color-fg-mid); }
+.toneSlider input { width: 100%; accent-color: var(--color-navy); }
+.toneSlider output { text-align: right; color: var(--color-fg); }
+
+/* ------------------------------------------------------------------ */
+/* Shared hero scaffolding                                             */
+
+.heroWrap { position: relative; }
+
+.hero {
+  position: relative;
+  min-height: 640px;
+  padding: 56px 0 96px;
+}
+
+.creature {
+  position: relative;
+  height: 620px;
+  min-width: 0;
+}
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Variant: beside — copy left, Lugia large + pushed right and up      */
+
+.beside .hero {
+  grid-template-columns: minmax(0, 1fr) minmax(460px, 1.05fr);
+  gap: 3vw;
+}
+.beside .creature {
+  height: 700px;
+  transform: translate(14%, -4%) scale(1.24);
+  transform-origin: center;
+}
+
+/* ------------------------------------------------------------------ */
+/* Variant: backdrop — Lugia behind the whole hero, faded, copy on top */
+
+.backdrop .hero {
+  grid-template-columns: minmax(0, 1fr);
+}
+.backdrop .creature {
+  position: absolute;
+  top: -40px;
+  right: -14vw;
+  width: min(1100px, 88vw);
+  height: 820px;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 34%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 34%, #000 100%);
+}
+.backdrop .hero :global(.hero-copy) { position: relative; z-index: 1; }
+
+/* ------------------------------------------------------------------ */
+/* Variant: band — solid navy hero with light glyphs                   */
+
+.band .heroWrap {
+  background: var(--color-navy);
+}
+.band .hero {
+  grid-template-columns: minmax(0, 1fr) minmax(440px, 1fr);
+  gap: 3vw;
+}
+.band .creature {
+  height: 660px;
+  transform: translate(7%, 0) scale(1.08);
+}
+.navLight :global(.brand),
+.navLight :global(.text-link) { color: var(--color-bg-panel); }
+.navLight :global(.brand-mark) { background: var(--color-bg-panel); color: var(--color-navy); }
+.copyLight h1,
+.copyLight :global(.eyebrow) { color: var(--color-bg-panel); }
+.copyLight :global(.hero-lede) { color: color-mix(in srgb, var(--color-bg-panel) 72%, transparent); }
+.copyLight :global(.proof-row) { color: color-mix(in srgb, var(--color-bg-panel) 60%, transparent); }
+.copyLight :global(.proof-row) strong { color: var(--color-blue); }
+.ghostLight {
+  border-color: color-mix(in srgb, var(--color-bg-panel) 35%, transparent) !important;
+  background: transparent !important;
+  color: var(--color-bg-panel) !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Plan section — the original hero card, moved below the fold        */
+
+.planSection {
+  display: grid;
+  width: min(1180px, 90vw);
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1fr);
+  align-items: center;
+  gap: 6vw;
+  margin: 0 auto;
+  padding: 90px 0 110px;
+}
+.planCopy h2 { margin-top: 12px; font-size: clamp(2rem, 3.4vw, 3rem); }
+.planCopy p:last-child { max-width: 480px; margin-top: 20px; color: var(--color-fg-mid); font-size: 1rem; line-height: 1.7; }
+
+@media (max-width: 900px) {
+  .beside .hero,
+  .band .hero,
+  .planSection { grid-template-columns: minmax(0, 1fr); }
+  .creature { height: 420px; transform: none !important; }
+  .backdrop .creature { right: -30vw; width: 120vw; height: 560px; opacity: 0.3; }
+}

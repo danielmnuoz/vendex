@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { ArrowRight, CalendarCheck, ListChecks, ScanSearch, Upload } from "lucide-react";
+import { AsciiCreatureCanvas } from "@/components/ascii/AsciiCreatureCanvas";
 
 const steps = [
   { icon: Upload, title: "Bring your inventory", copy: "Import a CSV or add cards as you go. Scope stock to the shows where it will actually be available." },
   { icon: CalendarCheck, title: "Join the same event", copy: "VenDex only compares vendors who will be in the same room. No global marketplace noise." },
   { icon: ScanSearch, title: "See actionable overlaps", copy: "Know who wants what you have—and who has what you need—before the doors open." },
 ] as const;
+
+/** Tone tuned by hand on /lab/hero: full ink, mid contrast, lifted shadows. */
+const heroTone = { ink: 1, contrast: 0.5, gamma: 0.5 };
 
 export default function Home() {
   return (
@@ -22,20 +26,40 @@ export default function Home() {
       </header>
 
       <main>
-        <section className="hero">
+        <section className="hero hero-backdrop-layout">
+          <div className="hero-backdrop" aria-hidden="true">
+            <AsciiCreatureCanvas
+              src="/lugia.png"
+              columns={160}
+              palette="brand"
+              motion="flap"
+              fit={1}
+              tone={heroTone}
+              className="hero-backdrop-canvas"
+              label="Lugia rendered as a field of glyphs"
+            />
+          </div>
           <div className="hero-copy">
             <p className="eyebrow">Built for convention vendors</p>
             <h1>Find the right booth before the doors open.</h1>
             <p className="hero-lede">VenDex turns inventory and buy lists into event-scoped opportunities, so your next deal starts with a plan instead of another lap around the hall.</p>
             <div className="hero-actions">
               <Link className="button primary icon-label" href="/signup">Create your vendor account <ArrowRight size={17} aria-hidden="true" /></Link>
-              <a className="button secondary" href="#how-it-works">See how it works</a>
+              <a className="button secondary" href="#plan">See how it works</a>
             </div>
             <div className="proof-row">
               <span><strong>Event-first</strong> matching</span>
               <span><strong>Private</strong> inventory search</span>
               <span><strong>Free</strong> to start</span>
             </div>
+          </div>
+        </section>
+
+        <section className="plan-section" id="plan">
+          <div className="plan-copy">
+            <p className="eyebrow">What show day looks like</p>
+            <h2>Every overlap, already on your plan.</h2>
+            <p>Before the hall opens you know which booths to hit, what you’re selling them, and what you’re buying. No spreadsheets, no Discord scroll-back.</p>
           </div>
           <div className="hero-visual" aria-label="Example VenDex opportunity plan">
             <div className="hero-event-card">
