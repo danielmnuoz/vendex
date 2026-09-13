@@ -113,6 +113,11 @@ function CsvImport({ events, onDone, onClose }: { events: EventSummary[]; onDone
 
   const correctedCsv = useMemo(() => analysis ? applyCandidateCorrections(csv, analysis.issues, selections) : csv, [analysis, csv, selections]);
 
+  function close() {
+    onClose();
+    if (result) onDone();
+  }
+
   async function dryRun(content: string) {
     return api<ImportResponse>("/inventory/import", { method: "POST", body: JSON.stringify({ eventId, csvContent: content, dryRun: true }) });
   }
@@ -132,7 +137,7 @@ function CsvImport({ events, onDone, onClose }: { events: EventSummary[]; onDone
     setBusy(true); setError("");
     try {
       const response = await api<ImportResponse>("/inventory/import", { method: "POST", body: JSON.stringify({ eventId, csvContent: correctedCsv, dryRun: false }) });
-      setResult(response); setStep(4); onDone();
+      setResult(response); setStep(4);
     } catch (reason) { setError(messageFor(reason)); } finally { setBusy(false); }
   }
 
@@ -143,12 +148,12 @@ function CsvImport({ events, onDone, onClose }: { events: EventSummary[]; onDone
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="csv-title">
       <section className="modal-card csv-modal">
-        <div className="panel-heading"><div><p className="eyebrow">CSV import</p><h2 id="csv-title">{["Choose a file", "Resolve matches", "Review import", "Import complete"][step - 1]}</h2></div><button className="close-button" type="button" onClick={onClose} aria-label="Close CSV import"><X size={18} /></button></div>
+        <div className="panel-heading"><div><p className="eyebrow">CSV import</p><h2 id="csv-title">{["Choose a file", "Resolve matches", "Review import", "Import complete"][step - 1]}</h2></div><button className="close-button" type="button" disabled={busy} onClick={close} aria-label="Close CSV import"><X size={18} /></button></div>
         <ol className="stepper" aria-label="Import progress">{["Upload", "Resolve", "Preview", "Commit"].map((label, index) => <li className={step >= index + 1 ? "active" : ""} key={label}><span>{index + 1}</span>{label}</li>)}</ol>
         {step === 1 ? <div className="import-step"><label className="file-drop"><FileUp size={28} /><strong>{fileName || "Choose a CSV inventory export"}</strong><span>Required: card_name, set_name, condition, quantity, price, priority</span><input type="file" accept=".csv,text/csv" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setFileName(file.name); setCsv(await file.text()); }} /></label><label className="field"><span>Scope imported stock to an event</span><select value={eventId} onChange={(event) => setEventId(event.target.value)}><option value="">Available generally</option>{events.map((event) => <option key={event.id} value={event.id}>{event.name}</option>)}</select></label><div className="form-actions"><button className="button primary" type="button" disabled={!csv || busy} onClick={analyze}>{busy ? "Analyzing…" : "Analyze rows"}</button></div></div> : null}
         {step === 2 && analysis ? <div className="import-step"><div className="import-summary"><strong>{analysis.resolvedRows.length} auto-matched</strong><span>{analysis.issues.length} rows need attention</span></div>{analysis.issues.length === 0 ? <EmptyState title="Every row matched safely" description="Continue to preview the exact records before committing." /> : <div className="issue-list">{analysis.issues.map((issue) => <article className="issue-card" key={issue.rowNumber}><header><span>Row {issue.rowNumber}</span><strong>{issue.cardName} · {issue.setName}</strong><small>{issue.reason}</small></header>{issue.candidates.length > 0 ? <div className="candidate-list">{issue.candidates.map((candidate) => <button className={selections.get(issue.rowNumber)?.cardId === candidate.cardId ? "selected" : ""} key={candidate.cardId} type="button" onClick={() => selectCandidate(issue.rowNumber, candidate)}><span><strong>{candidate.cardName}</strong><small>{candidate.setName}</small></span><b>{Math.round(candidate.confidence * 100)}%</b></button>)}</div> : <p className="form-help">No catalog candidates were found. This row will be skipped unless you correct the source CSV.</p>}</article>)}</div>}<div className="form-actions"><button className="button secondary" type="button" onClick={() => setStep(1)}>Back</button><button className="button primary" type="button" disabled={busy} onClick={buildPreview}>{busy ? "Rechecking…" : "Build preview"}</button></div></div> : null}
         {step === 3 && preview ? <div className="import-step"><div className="import-summary"><strong>{preview.resolvedRows.length} rows ready</strong><span>{preview.issues.length} rows will be skipped</span></div><div className="preview-table"><table><thead><tr><th>Row</th><th>Catalog match</th><th>Condition</th><th>Qty</th><th>Ask</th><th>Confidence</th></tr></thead><tbody>{preview.resolvedRows.map((row) => <tr key={row.rowNumber}><td>{row.rowNumber}</td><td><strong>{row.cardName}</strong><small>{row.setName}</small></td><td>{conditionLabel(row.condition)}</td><td>{row.quantity}</td><td>{money(row.askingPrice)}</td><td>{Math.round(row.confidence * 100)}%</td></tr>)}</tbody></table></div>{preview.issues.length > 0 ? <p className="form-help">Skipped rows remain in the report; committed rows are still written atomically by Inventory Service.</p> : null}<div className="form-actions"><button className="button secondary" type="button" onClick={() => setStep(2)}>Back</button><button className="button primary" disabled={busy || preview.resolvedRows.length === 0} type="button" onClick={commit}>{busy ? "Importing…" : `Import ${preview.resolvedRows.length} rows`}</button></div></div> : null}
-        {step === 4 && result ? <div className="import-step"><EmptyState title={`${result.importedItems.length} inventory items imported`} description={result.issues.length ? `${result.issues.length} rows were skipped and remain available in the preview report.` : "Every reviewed row was committed successfully."} action={<button className="button primary" type="button" onClick={onClose}>Return to inventory</button>} /></div> : null}
+        {step === 4 && result ? <div className="import-step"><EmptyState title={`${result.importedItems.length} inventory items imported`} description={result.issues.length ? `${result.issues.length} rows were skipped and remain available in the preview report.` : "Every reviewed row was committed successfully."} action={<button className="button primary" type="button" onClick={close}>Return to inventory</button>} /></div> : null}
         {error ? <p className="form-error" role="alert">{error}</p> : null}
       </section>
     </div>

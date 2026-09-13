@@ -34,13 +34,15 @@ export function dateRange(start: string, end: string) {
   const startDate = new Date(`${start}T12:00:00`);
   const endDate = new Date(`${end}T12:00:00`);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return `${start} – ${end}`;
+  const format = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (start === end) return format.format(startDate);
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  if (!sameYear) return `${format.format(startDate)}–${format.format(endDate)}`;
   const startText = startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const endText = endDate.toLocaleDateString("en-US", {
-    month: startDate.getMonth() === endDate.getMonth() ? undefined : "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${startText}–${endText}`;
+  const endText = startDate.getMonth() === endDate.getMonth()
+    ? String(endDate.getDate())
+    : endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${startText}–${endText}, ${endDate.getFullYear()}`;
 }
 
 export function relativeTime(epochSeconds: number) {

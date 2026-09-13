@@ -1,10 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { hydrateCards } from "@/lib/client-data";
+import { dateRange, hydrateCards } from "@/lib/client-data";
 import type { CardSummary } from "@/lib/contracts";
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe("dateRange", () => {
+  it.each([
+    ["2026-10-17", "2026-10-18", "Oct 17–18, 2026"],
+    ["2026-10-31", "2026-11-01", "Oct 31–Nov 1, 2026"],
+    ["2026-12-31", "2027-01-01", "Dec 31, 2026–Jan 1, 2027"],
+    ["2026-10-17", "2026-10-17", "Oct 17, 2026"],
+    ["invalid", "2026-10-18", "invalid – 2026-10-18"],
+  ])("formats %s through %s for event displays", (start, end, expected) => {
+    expect(dateRange(start, end)).toBe(expected);
+  });
 });
 
 describe("hydrateCards", () => {

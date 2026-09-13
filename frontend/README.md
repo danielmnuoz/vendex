@@ -4,8 +4,8 @@ The vendor web app is a Next.js 16 App Router project. It uses a small backend-f
 
 ## Local development
 
-1. Copy `.env.example` to `.env.local` if the gateway is not available at `http://localhost:8080`.
-2. Install dependencies with `npm install`.
+1. Copy `.env.example` to `.env.local` and set `GATEWAY_BASE_URL=http://localhost:8081` for the Compose gateway. Port 8080 hosts the Redpanda console.
+2. Install locked dependencies with `npm ci` (Node.js 24).
 3. Start the app with `npm run dev`.
 
 The frontend imports the repository-level `ui/tokens.css` file directly; do not duplicate or hardcode the product palette in component styles.
