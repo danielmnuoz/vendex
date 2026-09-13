@@ -1,5 +1,7 @@
 # VenDex
 
+![VenDex landing page featuring the Lugia glyph artwork](docs/demo/assets/landing.png)
+
 **Know who to buy from and sell to before the card show starts.**
 
 VenDex helps Pokémon card sellers prepare for conventions. Add the cards you’re bringing and the cards you want to buy, then join your next event. VenDex finds sellers at that same event whose cards, prices, and condition fit what you need—and buyers who want your stock. Save the useful matches so you can spend less time searching the convention floor.
